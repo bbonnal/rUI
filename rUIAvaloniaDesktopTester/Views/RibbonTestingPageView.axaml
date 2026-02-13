@@ -7,48 +7,72 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:pia="using:PhosphorIconsAvalonia.Markup"
              mc:Ignorable="d"
-             d:DesignWidth="1000"
-             d:DesignHeight="700"
+             d:DesignWidth="1200"
+             d:DesignHeight="760"
              x:Class="rUIAvaloniaDesktopTester.Views.RibbonTestingPageView"
              x:DataType="vm:RibbonTestingPageViewModel">
 
     <DockPanel>
         <ruiRibbon:RibbonControl DockPanel.Dock="Top">
             <ruiRibbon:RibbonTab Header="Draw">
-                <ruiRibbon:RibbonGroup Header="Tools">
+                <ruiRibbon:RibbonGroup Header="Base">
                     <ruiRibbon:RibbonButton Header="Select/Move"
-                                               IconData="{pia:IconGeometry Icon=cursor_click}"
-                                               Command="{Binding SelectToolCommand}" />
+                                            IconData="{pia:IconGeometry Icon=cursor_click}"
+                                            Command="{Binding SelectToolCommand}" />
                     <ruiRibbon:RibbonButton Header="Point"
-                                               IconData="{pia:IconGeometry Icon=dot_outline}"
-                                               Command="{Binding SelectPointToolCommand}" />
+                                            IconData="{pia:IconGeometry Icon=dot_outline}"
+                                            Command="{Binding SelectPointToolCommand}" />
                     <ruiRibbon:RibbonButton Header="Line"
-                                               IconData="{pia:IconGeometry Icon=line_segment}"
-                                               Command="{Binding SelectLineToolCommand}" />
+                                            IconData="{pia:IconGeometry Icon=line_segment}"
+                                            Command="{Binding SelectLineToolCommand}" />
                     <ruiRibbon:RibbonButton Header="Rectangle"
-                                               IconData="{pia:IconGeometry Icon=rectangle}"
-                                               Command="{Binding SelectRectangleToolCommand}" />
+                                            IconData="{pia:IconGeometry Icon=rectangle}"
+                                            Command="{Binding SelectRectangleToolCommand}" />
                     <ruiRibbon:RibbonButton Header="Circle"
-                                               IconData="{pia:IconGeometry Icon=circle}"
-                                               Command="{Binding SelectCircleToolCommand}" />
+                                            IconData="{pia:IconGeometry Icon=circle}"
+                                            Command="{Binding SelectCircleToolCommand}" />
+                </ruiRibbon:RibbonGroup>
+
+                <ruiRibbon:RibbonGroup Header="Advanced">
+                    <ruiRibbon:RibbonButton Header="Image"
+                                            IconData="{pia:IconGeometry Icon=rectangle}"
+                                            Command="{Binding SelectImageToolCommand}" />
+                    <ruiRibbon:RibbonButton Header="Text Box"
+                                            IconData="{pia:IconGeometry Icon=rectangle}"
+                                            Command="{Binding SelectTextBoxToolCommand}" />
+                    <ruiRibbon:RibbonButton Header="Arrow"
+                                            IconData="{pia:IconGeometry Icon=line_segment}"
+                                            Command="{Binding SelectArrowToolCommand}" />
+                    <ruiRibbon:RibbonButton Header="Centerline Rect"
+                                            IconData="{pia:IconGeometry Icon=rectangle}"
+                                            Command="{Binding SelectCenterlineRectangleToolCommand}" />
+                    <ruiRibbon:RibbonButton Header="Referential"
+                                            IconData="{pia:IconGeometry Icon=line_segment}"
+                                            Command="{Binding SelectReferentialToolCommand}" />
+                    <ruiRibbon:RibbonButton Header="Dimension"
+                                            IconData="{pia:IconGeometry Icon=line_segment}"
+                                            Command="{Binding SelectDimensionToolCommand}" />
+                    <ruiRibbon:RibbonButton Header="Angle Dim"
+                                            IconData="{pia:IconGeometry Icon=circle}"
+                                            Command="{Binding SelectAngleDimensionToolCommand}" />
                 </ruiRibbon:RibbonGroup>
 
                 <ruiRibbon:RibbonGroup Header="Canvas">
                     <ruiRibbon:RibbonButton Header="Reset View"
-                                               IconData="{pia:IconGeometry Icon=arrows_clockwise}"
-                                               Command="{Binding ResetViewCommand}" />
+                                            IconData="{pia:IconGeometry Icon=arrows_clockwise}"
+                                            Command="{Binding ResetViewCommand}" />
                     <ruiRibbon:RibbonButton Header="Clear"
-                                               IconData="{pia:IconGeometry Icon=trash}"
-                                               Command="{Binding ClearCanvasCommand}" />
+                                            IconData="{pia:IconGeometry Icon=trash}"
+                                            Command="{Binding ClearCanvasCommand}" />
                 </ruiRibbon:RibbonGroup>
             </ruiRibbon:RibbonTab>
 
             <ruiRibbon:RibbonTab Header="Help">
                 <ruiRibbon:RibbonGroup Header="Usage">
-                    <TextBlock Width="420"
+                    <TextBlock Width="520"
                                TextWrapping="Wrap"
                                Foreground="{DynamicResource rUIForegroundSecondaryBrush}"
-                               Text="Use Select/Move to pick shapes, drag them, and use visible grab handles to resize. Draw tools create new shapes. Use middle mouse button to pan, mouse wheel to zoom, and right click for context actions." />
+                               Text="Select/Move: select, drag, and resize with handles. Draw tools create elements on drag. Middle mouse: pan. Wheel: zoom. Right click: context menu (delete shape or center view)." />
                 </ruiRibbon:RibbonGroup>
             </ruiRibbon:RibbonTab>
         </ruiRibbon:RibbonControl>
@@ -68,15 +92,15 @@
                 </Border>
 
                 <ruiDrawing:DrawingCanvasControl Shapes="{Binding Shapes}"
-                                                    ActiveTool="{Binding ActiveTool}"
-                                                    Zoom="{Binding Zoom}"
-                                                    Pan="{Binding Pan}"
-                                                    CursorAvaloniaPosition="{Binding CursorAvaloniaPosition}"
-                                                    CursorCanvasPosition="{Binding CursorCanvasPosition}"
-                                                    CanvasBackground="{DynamicResource rUIBackgroundBrush}"
-                                                    ShapeStroke="{DynamicResource rUIAccentBrush}"
-                                                    PreviewStroke="{DynamicResource rUIWarningBrush}"
-                                                    HoverStroke="{DynamicResource rUIWarningBrush}" />
+                                                ActiveTool="{Binding ActiveTool}"
+                                                Zoom="{Binding Zoom}"
+                                                Pan="{Binding Pan}"
+                                                CursorAvaloniaPosition="{Binding CursorAvaloniaPosition}"
+                                                CursorCanvasPosition="{Binding CursorCanvasPosition}"
+                                                CanvasBackground="{DynamicResource rUIBackgroundBrush}"
+                                                ShapeStroke="{DynamicResource rUIAccentBrush}"
+                                                PreviewStroke="{DynamicResource rUIWarningBrush}"
+                                                HoverStroke="{DynamicResource rUIWarningBrush}" />
             </DockPanel>
         </Border>
     </DockPanel>

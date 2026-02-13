@@ -16,6 +16,13 @@ public partial class RibbonTestingPageViewModel : ViewModelBase
         SelectLineToolCommand = new RelayCommand(() => ActiveTool = DrawingTool.Line);
         SelectRectangleToolCommand = new RelayCommand(() => ActiveTool = DrawingTool.Rectangle);
         SelectCircleToolCommand = new RelayCommand(() => ActiveTool = DrawingTool.Circle);
+        SelectImageToolCommand = new RelayCommand(() => ActiveTool = DrawingTool.Image);
+        SelectTextBoxToolCommand = new RelayCommand(() => ActiveTool = DrawingTool.TextBox);
+        SelectArrowToolCommand = new RelayCommand(() => ActiveTool = DrawingTool.Arrow);
+        SelectCenterlineRectangleToolCommand = new RelayCommand(() => ActiveTool = DrawingTool.CenterlineRectangle);
+        SelectReferentialToolCommand = new RelayCommand(() => ActiveTool = DrawingTool.Referential);
+        SelectDimensionToolCommand = new RelayCommand(() => ActiveTool = DrawingTool.Dimension);
+        SelectAngleDimensionToolCommand = new RelayCommand(() => ActiveTool = DrawingTool.AngleDimension);
 
         ClearCanvasCommand = new RelayCommand(ClearCanvas);
         ResetViewCommand = new RelayCommand(ResetView);
@@ -44,6 +51,13 @@ public partial class RibbonTestingPageViewModel : ViewModelBase
     public IRelayCommand SelectLineToolCommand { get; }
     public IRelayCommand SelectRectangleToolCommand { get; }
     public IRelayCommand SelectCircleToolCommand { get; }
+    public IRelayCommand SelectImageToolCommand { get; }
+    public IRelayCommand SelectTextBoxToolCommand { get; }
+    public IRelayCommand SelectArrowToolCommand { get; }
+    public IRelayCommand SelectCenterlineRectangleToolCommand { get; }
+    public IRelayCommand SelectReferentialToolCommand { get; }
+    public IRelayCommand SelectDimensionToolCommand { get; }
+    public IRelayCommand SelectAngleDimensionToolCommand { get; }
     public IRelayCommand ClearCanvasCommand { get; }
     public IRelayCommand ResetViewCommand { get; }
 

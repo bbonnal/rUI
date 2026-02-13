@@ -1,19 +1,21 @@
 using System.Collections.Specialized;
+using System.Globalization;
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Controls.Shapes;
 using Avalonia.Data;
 using Avalonia.Input;
+using Avalonia.Media;
+using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using Flowxel.Core.Geometry.Primitives;
 using Flowxel.Core.Geometry.Shapes;
 using rUI.Drawing.Core;
+using rUI.Drawing.Core.Shapes;
 using AvaloniaPoint = global::Avalonia.Point;
 using AvaloniaVector = global::Avalonia.Vector;
 using FlowPoint = Flowxel.Core.Geometry.Shapes.Point;
 using FlowRectangle = Flowxel.Core.Geometry.Shapes.Rectangle;
 using FlowVector = Flowxel.Core.Geometry.Primitives.Vector;
-using global::Avalonia.Media;
 using Line = Flowxel.Core.Geometry.Shapes.Line;
 using Shape = Flowxel.Core.Geometry.Shapes.Shape;
 
@@ -23,12 +25,13 @@ public class DrawingCanvasControl : Control
 {
     private static readonly Cursor ArrowCursor = new(StandardCursorType.Arrow);
     private static readonly Cursor HandCursor = new(StandardCursorType.Hand);
-    private static readonly Cursor GrabCursor = new(StandardCursorType.SizeAll);
+    private static readonly Cursor GrabCursor = new(StandardCursorType.DragMove);
     private static readonly Cursor DrawCursor = new(StandardCursorType.Cross);
 
     private const double MinShapeSize = 0.0001;
 
     private readonly DrawingCanvasContextMenu _contextMenu;
+    private readonly Dictionary<string, Bitmap?> _imageCache = new(StringComparer.OrdinalIgnoreCase);
 
     private Shape? _previewShape;
     private Shape? _hoveredShape;
@@ -751,17 +754,13 @@ public class DrawingCanvasControl : Control
                 break;
             }
             case FlowRectangle rectangle:
-            {
-                var topLeft = WorldToScreen(rectangle.TopLeft.Position);
-                var topRight = WorldToScreen(rectangle.TopRight.Position);
-                var bottomRight = WorldToScreen(rectangle.BottomRight.Position);
-                var bottomLeft = WorldToScreen(rectangle.BottomLeft.Position);
-                context.DrawLine(pen, topLeft, topRight);
-                context.DrawLine(pen, topRight, bottomRight);
-                context.DrawLine(pen, bottomRight, bottomLeft);
-                context.DrawLine(pen, bottomLeft, topLeft);
+                DrawClosedPolyline(context, pen,
+                    rectangle.TopLeft.Position,
+                    rectangle.TopRight.Position,
+                    rectangle.BottomRight.Position,
+                    rectangle.BottomLeft.Position,
+                    rectangle.TopLeft.Position);
                 break;
-            }
             case Circle circle:
             {
                 var center = WorldToScreen(circle.Pose.Position);
@@ -769,6 +768,209 @@ public class DrawingCanvasControl : Control
                 context.DrawEllipse(null, pen, center, radius, radius);
                 break;
             }
+            case ImageShape image:
+                DrawImageShape(context, image, pen, strokeBrush);
+                break;
+            case TextBoxShape textBox:
+                DrawTextBoxShape(context, textBox, pen, strokeBrush);
+                break;
+            case ArrowShape arrow:
+                DrawArrowShape(context, arrow, pen);
+                break;
+            case CenterlineRectangleShape centerlineRectangle:
+                DrawClosedPolyline(context, pen,
+                    centerlineRectangle.TopLeft,
+                    centerlineRectangle.TopRight,
+                    centerlineRectangle.BottomRight,
+                    centerlineRectangle.BottomLeft,
+                    centerlineRectangle.TopLeft);
+                break;
+            case ReferentialShape referential:
+                DrawReferentialShape(context, referential, pen);
+                break;
+            case DimensionShape dimension:
+                DrawDimensionShape(context, dimension, pen, strokeBrush);
+                break;
+            case AngleDimensionShape angleDimension:
+                DrawAngleDimensionShape(context, angleDimension, pen, strokeBrush);
+                break;
+        }
+    }
+
+    private void DrawImageShape(DrawingContext context, ImageShape image, Pen pen, IBrush strokeBrush)
+    {
+        DrawClosedPolyline(context, pen, image.TopLeft, image.TopRight, image.BottomRight, image.BottomLeft, image.TopLeft);
+
+        if (string.IsNullOrWhiteSpace(image.SourcePath))
+        {
+            context.DrawLine(pen, WorldToScreen(image.TopLeft), WorldToScreen(image.BottomRight));
+            context.DrawLine(pen, WorldToScreen(image.TopRight), WorldToScreen(image.BottomLeft));
+            return;
+        }
+
+        var bitmap = TryGetBitmap(image.SourcePath);
+        if (bitmap is null)
+            return;
+
+        var topLeft = WorldToScreen(image.TopLeft);
+        var bottomRight = WorldToScreen(image.BottomRight);
+        var rect = new Rect(topLeft, bottomRight);
+        context.DrawImage(bitmap, new Rect(0, 0, bitmap.PixelSize.Width, bitmap.PixelSize.Height), rect);
+        context.DrawRectangle(null, pen, rect);
+    }
+
+    private void DrawTextBoxShape(DrawingContext context, TextBoxShape textBox, Pen pen, IBrush strokeBrush)
+    {
+        DrawClosedPolyline(context, pen, textBox.TopLeft, textBox.TopRight, textBox.BottomRight, textBox.BottomLeft, textBox.TopLeft);
+
+        var topLeft = WorldToScreen(textBox.TopLeft);
+        var bottomRight = WorldToScreen(textBox.BottomRight);
+        var rect = new Rect(topLeft, bottomRight);
+
+        var fontSize = Math.Max(8, textBox.FontSize * Zoom);
+        var formattedText = new FormattedText(
+            textBox.Text,
+            CultureInfo.CurrentCulture,
+            FlowDirection.LeftToRight,
+            new Typeface("Segoe UI"),
+            fontSize,
+            strokeBrush);
+
+        var textPosition = new AvaloniaPoint(rect.X + 6, rect.Y + 4);
+        context.DrawText(formattedText, textPosition);
+    }
+
+    private void DrawArrowShape(DrawingContext context, ArrowShape arrow, Pen pen)
+    {
+        var start = WorldToScreen(arrow.StartPoint);
+        var end = WorldToScreen(arrow.EndPoint);
+        var headLeft = WorldToScreen(arrow.HeadLeftPoint);
+        var headRight = WorldToScreen(arrow.HeadRightPoint);
+
+        context.DrawLine(pen, start, end);
+        context.DrawLine(pen, end, headLeft);
+        context.DrawLine(pen, end, headRight);
+    }
+
+    private void DrawReferentialShape(DrawingContext context, ReferentialShape referential, Pen pen)
+    {
+        var origin = WorldToScreen(referential.Origin);
+        var xEnd = WorldToScreen(referential.XAxisEnd);
+        var yEnd = WorldToScreen(referential.YAxisEnd);
+
+        context.DrawLine(pen, origin, xEnd);
+        context.DrawLine(pen, origin, yEnd);
+
+        DrawArrowHead(context, pen, referential.XAxisEnd, referential.Origin, 14);
+        DrawArrowHead(context, pen, referential.YAxisEnd, referential.Origin, 14);
+    }
+
+    private void DrawDimensionShape(DrawingContext context, DimensionShape dimension, Pen pen, IBrush strokeBrush)
+    {
+        var start = WorldToScreen(dimension.StartPoint);
+        var end = WorldToScreen(dimension.EndPoint);
+        var offsetStart = WorldToScreen(dimension.OffsetStart);
+        var offsetEnd = WorldToScreen(dimension.OffsetEnd);
+
+        context.DrawLine(pen, start, offsetStart);
+        context.DrawLine(pen, end, offsetEnd);
+        context.DrawLine(pen, offsetStart, offsetEnd);
+
+        DrawArrowHead(context, pen, dimension.OffsetStart, dimension.OffsetEnd, 12);
+        DrawArrowHead(context, pen, dimension.OffsetEnd, dimension.OffsetStart, 12);
+
+        var mid = WorldToScreen(dimension.OffsetMidpoint);
+        var label = string.IsNullOrWhiteSpace(dimension.Text) ? dimension.Length.ToString("0.##") : dimension.Text;
+        var formattedText = new FormattedText(
+            label,
+            CultureInfo.CurrentCulture,
+            FlowDirection.LeftToRight,
+            new Typeface("Segoe UI"),
+            Math.Max(10, 12 * Zoom),
+            strokeBrush);
+
+        context.DrawText(formattedText, new AvaloniaPoint(mid.X + 4, mid.Y - formattedText.Height - 2));
+    }
+
+    private void DrawAngleDimensionShape(DrawingContext context, AngleDimensionShape angleDimension, Pen pen, IBrush strokeBrush)
+    {
+        context.DrawLine(pen, WorldToScreen(angleDimension.Center), WorldToScreen(angleDimension.StartPoint));
+        context.DrawLine(pen, WorldToScreen(angleDimension.Center), WorldToScreen(angleDimension.EndPoint));
+
+        DrawArc(context, pen, angleDimension);
+
+        var startTanAnchor = angleDimension.PointOnArc(angleDimension.StartAngleRad + (angleDimension.SweepAngleRad >= 0 ? 0.08 : -0.08));
+        var endTanAnchor = angleDimension.PointOnArc(angleDimension.EndAngleRad - (angleDimension.SweepAngleRad >= 0 ? 0.08 : -0.08));
+        DrawArrowHead(context, pen, angleDimension.StartPoint, startTanAnchor, 12);
+        DrawArrowHead(context, pen, angleDimension.EndPoint, endTanAnchor, 12);
+
+        var mid = WorldToScreen(angleDimension.MidPoint);
+        var label = string.IsNullOrWhiteSpace(angleDimension.Text)
+            ? $"{Math.Abs(angleDimension.SweepAngleRad * 180 / Math.PI):0.#}°"
+            : angleDimension.Text;
+
+        var formattedText = new FormattedText(
+            label,
+            CultureInfo.CurrentCulture,
+            FlowDirection.LeftToRight,
+            new Typeface("Segoe UI"),
+            Math.Max(10, 12 * Zoom),
+            strokeBrush);
+
+        context.DrawText(formattedText, new AvaloniaPoint(mid.X + 4, mid.Y - formattedText.Height - 2));
+    }
+
+    private void DrawClosedPolyline(DrawingContext context, Pen pen, params FlowVector[] points)
+    {
+        for (var i = 1; i < points.Length; i++)
+            context.DrawLine(pen, WorldToScreen(points[i - 1]), WorldToScreen(points[i]));
+    }
+
+    private void DrawArrowHead(DrawingContext context, Pen pen, FlowVector tip, FlowVector tailAnchor, double pixelSize)
+    {
+        var direction = tip - tailAnchor;
+        if (direction.M <= 0.0000001)
+            return;
+
+        var dir = direction.Normalize();
+        var lengthWorld = pixelSize / Math.Max(Zoom, MinZoom);
+        var left = tip.Translate(dir.Scale(-lengthWorld).Rotate(Math.PI / 7));
+        var right = tip.Translate(dir.Scale(-lengthWorld).Rotate(-Math.PI / 7));
+
+        context.DrawLine(pen, WorldToScreen(tip), WorldToScreen(left));
+        context.DrawLine(pen, WorldToScreen(tip), WorldToScreen(right));
+    }
+
+    private void DrawArc(DrawingContext context, Pen pen, AngleDimensionShape angleDimension)
+    {
+        var span = Math.Abs(angleDimension.SweepAngleRad);
+        var segmentCount = Math.Clamp((int)(span * 18), 8, 72);
+        var previous = angleDimension.PointOnArc(angleDimension.StartAngleRad);
+        for (var i = 1; i <= segmentCount; i++)
+        {
+            var t = (double)i / segmentCount;
+            var angle = angleDimension.StartAngleRad + (angleDimension.SweepAngleRad * t);
+            var current = angleDimension.PointOnArc(angle);
+            context.DrawLine(pen, WorldToScreen(previous), WorldToScreen(current));
+            previous = current;
+        }
+    }
+
+    private Bitmap? TryGetBitmap(string path)
+    {
+        if (_imageCache.TryGetValue(path, out var cached))
+            return cached;
+
+        try
+        {
+            var bitmap = new Bitmap(path);
+            _imageCache[path] = bitmap;
+            return bitmap;
+        }
+        catch
+        {
+            _imageCache[path] = null;
+            return null;
         }
     }
 

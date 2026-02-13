@@ -11,5 +11,12 @@ public enum ShapeHandleKind
     RectTopRight = 6,
     RectBottomRight = 7,
     RectBottomLeft = 8,
-    CircleRadius = 9
+    CircleRadius = 9,
+    CenterlineWidth = 10,
+    ReferentialXAxis = 11,
+    ReferentialYAxis = 12,
+    DimensionOffset = 13,
+    AngleDimensionStart = 14,
+    AngleDimensionEnd = 15,
+    AngleDimensionRadius = 16
 }
