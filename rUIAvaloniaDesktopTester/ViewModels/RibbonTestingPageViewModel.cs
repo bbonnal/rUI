@@ -30,7 +30,9 @@ public partial class RibbonTestingPageViewModel : ViewModelBase
 
         ClearCanvasCommand = new RelayCommand(ClearCanvas);
         ResetViewCommand = new RelayCommand(ResetView);
+
         Shapes.CollectionChanged += OnShapesCollectionChanged;
+        ComputedShapeIds.CollectionChanged += OnComputedShapeIdsCollectionChanged;
     }
 
     public IContentDialogService DialogService { get; }
@@ -38,6 +40,8 @@ public partial class RibbonTestingPageViewModel : ViewModelBase
     public IInfoBarService InfoBarService { get; }
 
     public ObservableCollection<Shape> Shapes { get; } = [];
+
+    public ObservableCollection<string> ComputedShapeIds { get; } = [];
 
     [ObservableProperty]
     private DrawingTool activeTool = DrawingTool.Select;
@@ -70,7 +74,7 @@ public partial class RibbonTestingPageViewModel : ViewModelBase
     public IRelayCommand ResetViewCommand { get; }
 
     public string StatusText =>
-        $"Tool: {ActiveTool} | Shapes: {Shapes.Count} | Zoom: {Zoom:0.00}x | Pan: ({Pan.X:0.0}, {Pan.Y:0.0}) | Cursor(Avalonia): ({CursorAvaloniaPosition.X:0.0}, {CursorAvaloniaPosition.Y:0.0}) | Cursor(Canvas): ({CursorCanvasPosition.X:0.00}, {CursorCanvasPosition.Y:0.00})";
+        $"Tool: {ActiveTool} | Shapes: {Shapes.Count} (Computed: {ComputedShapeIds.Count}) | Zoom: {Zoom:0.00}x | Pan: ({Pan.X:0.0}, {Pan.Y:0.0}) | Cursor(Avalonia): ({CursorAvaloniaPosition.X:0.0}, {CursorAvaloniaPosition.Y:0.0}) | Cursor(Canvas): ({CursorCanvasPosition.X:0.00}, {CursorCanvasPosition.Y:0.00})";
 
     partial void OnActiveToolChanged(DrawingTool value) => OnPropertyChanged(nameof(StatusText));
 
@@ -85,6 +89,7 @@ public partial class RibbonTestingPageViewModel : ViewModelBase
     private void ClearCanvas()
     {
         Shapes.Clear();
+        ComputedShapeIds.Clear();
         OnPropertyChanged(nameof(StatusText));
     }
 
@@ -95,5 +100,8 @@ public partial class RibbonTestingPageViewModel : ViewModelBase
     }
 
     private void OnShapesCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+        => OnPropertyChanged(nameof(StatusText));
+
+    private void OnComputedShapeIdsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
         => OnPropertyChanged(nameof(StatusText));
 }

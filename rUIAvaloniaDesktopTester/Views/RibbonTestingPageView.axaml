@@ -99,6 +99,7 @@
                                                 CursorCanvasPosition="{Binding CursorCanvasPosition}"
                                                 DialogService="{Binding DialogService}"
                                                 InfoBarService="{Binding InfoBarService}"
+                                                ComputedShapeIds="{Binding ComputedShapeIds}"
                                                 CanvasBackground="{DynamicResource rUIBackgroundBrush}"
                                                 ShapeStroke="{DynamicResource rUIAccentBrush}"
                                                 PreviewStroke="{DynamicResource rUIWarningBrush}"

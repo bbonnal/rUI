@@ -36,6 +36,13 @@ public sealed class DrawingCanvasContextMenu : ContextMenu
         _centerViewItem.IsVisible = false;
     }
 
+    public void ConfigureForComputedShape()
+    {
+        _propertiesItem.IsVisible = false;
+        _deleteShapeItem.IsVisible = false;
+        _centerViewItem.IsVisible = false;
+    }
+
     public void ConfigureForCanvas()
     {
         _propertiesItem.IsVisible = false;

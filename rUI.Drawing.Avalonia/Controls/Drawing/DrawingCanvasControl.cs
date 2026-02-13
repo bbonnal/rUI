@@ -72,6 +72,12 @@ public class DrawingCanvasControl : Control
             nameof(Pan),
             defaultBindingMode: BindingMode.TwoWay);
 
+    public static readonly StyledProperty<IList<string>> ComputedShapeIdsProperty =
+        AvaloniaProperty.Register<DrawingCanvasControl, IList<string>>(
+            nameof(ComputedShapeIds),
+            defaultValue: new List<string>(),
+            defaultBindingMode: BindingMode.TwoWay);
+
     public static readonly StyledProperty<IContentDialogService?> DialogServiceProperty =
         AvaloniaProperty.Register<DrawingCanvasControl, IContentDialogService?>(nameof(DialogService));
 
@@ -108,6 +114,11 @@ public class DrawingCanvasControl : Control
         AvaloniaProperty.Register<DrawingCanvasControl, IBrush>(
             nameof(HoverStroke),
             Brushes.Gold);
+
+    public static readonly StyledProperty<IBrush> ComputedStrokeProperty =
+        AvaloniaProperty.Register<DrawingCanvasControl, IBrush>(
+            nameof(ComputedStroke),
+            Brushes.MediumSeaGreen);
 
     public static readonly StyledProperty<IBrush> HandleFillProperty =
         AvaloniaProperty.Register<DrawingCanvasControl, IBrush>(
@@ -161,6 +172,9 @@ public class DrawingCanvasControl : Control
         Shapes = [];
         AttachShapesCollection(Shapes);
 
+        ComputedShapeIds = [];
+        AttachComputedShapeIdsCollection(ComputedShapeIds);
+
         _contextMenu = new DrawingCanvasContextMenu();
         _contextMenu.DeleteShapeRequested += OnDeleteShapeRequested;
         _contextMenu.CenterViewRequested += OnCenterViewRequested;
@@ -191,6 +205,12 @@ public class DrawingCanvasControl : Control
     {
         get => GetValue(PanProperty);
         set => SetValue(PanProperty, value);
+    }
+
+    public IList<string> ComputedShapeIds
+    {
+        get => GetValue(ComputedShapeIdsProperty);
+        set => SetValue(ComputedShapeIdsProperty, value);
     }
 
     public IContentDialogService? DialogService
@@ -245,6 +265,12 @@ public class DrawingCanvasControl : Control
     {
         get => GetValue(HoverStrokeProperty);
         set => SetValue(HoverStrokeProperty, value);
+    }
+
+    public IBrush ComputedStroke
+    {
+        get => GetValue(ComputedStrokeProperty);
+        set => SetValue(ComputedStrokeProperty, value);
     }
 
     public IBrush HandleFill
@@ -338,7 +364,13 @@ public class DrawingCanvasControl : Control
             if (ReferenceEquals(shape, _selectedShape) || ReferenceEquals(shape, _hoveredShape))
                 continue;
 
-            DrawShape(context, shape, ShapeStroke, StrokeThickness, null);
+            var isComputed = IsComputedShape(shape);
+            DrawShape(
+                context,
+                shape,
+                isComputed ? ComputedStroke : ShapeStroke,
+                StrokeThickness,
+                isComputed ? [5, 4] : null);
         }
 
         if (_hoveredShape is not null && !ReferenceEquals(_hoveredShape, _selectedShape))
@@ -346,8 +378,10 @@ public class DrawingCanvasControl : Control
 
         if (_selectedShape is not null)
         {
-            DrawShape(context, _selectedShape, SelectedStroke, StrokeThickness + 1.5, null);
-            DrawGrabHandles(context, _selectedShape);
+            var selectedComputed = IsComputedShape(_selectedShape);
+            DrawShape(context, _selectedShape, selectedComputed ? ComputedStroke : SelectedStroke, StrokeThickness + 1.5, selectedComputed ? [5, 4] : null);
+            if (!selectedComputed)
+                DrawGrabHandles(context, _selectedShape);
         }
 
         if (_previewShape is not null)
@@ -367,10 +401,22 @@ public class DrawingCanvasControl : Control
                 AttachShapesCollection(newShapes);
         }
 
+        if (change.Property == ComputedShapeIdsProperty)
+        {
+            if (change.OldValue is IList<string> oldComputed)
+                DetachComputedShapeIdsCollection(oldComputed);
+
+            if (change.NewValue is IList<string> newComputed)
+                AttachComputedShapeIdsCollection(newComputed);
+
+            InvalidateVisual();
+        }
+
         if (change.Property == ZoomProperty ||
             change.Property == PanProperty ||
             change.Property == ActiveToolProperty ||
             change.Property == HoverStrokeProperty ||
+            change.Property == ComputedStrokeProperty ||
             change.Property == SelectedStrokeProperty ||
             change.Property == HandleFillProperty ||
             change.Property == HandleStrokeProperty ||
@@ -458,7 +504,7 @@ public class DrawingCanvasControl : Control
             return;
         }
 
-        if (ActiveTool == DrawingTool.Select && _selectedShape is not null && _activeHandle != ShapeHandleKind.None)
+        if (ActiveTool == DrawingTool.Select && _selectedShape is not null && !IsComputedShape(_selectedShape) && _activeHandle != ShapeHandleKind.None)
         {
             ShapeInteractionEngine.ApplyHandleDrag(_selectedShape, _activeHandle, world, _lastDragWorld, MinShapeSize);
             _lastDragWorld = world;
@@ -565,7 +611,7 @@ public class DrawingCanvasControl : Control
 
     private void HandleSelectToolPointerPressed(PointerPressedEventArgs e, FlowVector world)
     {
-        if (_selectedShape is not null)
+        if (_selectedShape is not null && !IsComputedShape(_selectedShape))
         {
             var handle = HitTestHandle(_selectedShape, world);
             if (handle != ShapeHandleKind.None)
@@ -602,6 +648,16 @@ public class DrawingCanvasControl : Control
             return;
         }
 
+        if (IsComputedShape(hitShape))
+        {
+            _activeHandle = ShapeHandleKind.None;
+            _lastDragWorld = null;
+            UpdateCursor();
+            InvalidateVisual();
+            e.Handled = true;
+            return;
+        }
+
         _activeHandle = ShapeHandleKind.Move;
         _lastDragWorld = world;
         e.Pointer.Capture(this);
@@ -612,10 +668,16 @@ public class DrawingCanvasControl : Control
 
     private void ConfigureContextMenuTarget(Shape? shape)
     {
-        if (shape is not null)
-            _contextMenu.ConfigureForShape();
-        else
+        if (shape is null)
+        {
             _contextMenu.ConfigureForCanvas();
+            return;
+        }
+
+        if (IsComputedShape(shape))
+            _contextMenu.ConfigureForComputedShape();
+        else
+            _contextMenu.ConfigureForShape();
     }
 
     private void AttachShapesCollection(IList<Shape> shapes)
@@ -630,6 +692,18 @@ public class DrawingCanvasControl : Control
             observableCollection.CollectionChanged -= OnShapesCollectionChanged;
     }
 
+    private void AttachComputedShapeIdsCollection(IList<string> computedShapeIds)
+    {
+        if (computedShapeIds is INotifyCollectionChanged observableCollection)
+            observableCollection.CollectionChanged += OnComputedShapeIdsCollectionChanged;
+    }
+
+    private void DetachComputedShapeIdsCollection(IList<string> computedShapeIds)
+    {
+        if (computedShapeIds is INotifyCollectionChanged observableCollection)
+            observableCollection.CollectionChanged -= OnComputedShapeIdsCollectionChanged;
+    }
+
     private void OnShapesCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         if (_hoveredShape is not null && !Shapes.Contains(_hoveredShape))
@@ -638,12 +712,22 @@ public class DrawingCanvasControl : Control
         if (_selectedShape is not null && !Shapes.Contains(_selectedShape))
             _selectedShape = null;
 
+        for (var i = ComputedShapeIds.Count - 1; i >= 0; i--)
+        {
+            var id = ComputedShapeIds[i];
+            if (!Shapes.Any(shape => shape.Id == id))
+                ComputedShapeIds.RemoveAt(i);
+        }
+
         InvalidateVisual();
     }
 
+    private void OnComputedShapeIdsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+        => InvalidateVisual();
+
     private void OnDeleteShapeRequested(object? sender, EventArgs e)
     {
-        if (_contextMenuTargetShape is null)
+        if (_contextMenuTargetShape is null || IsComputedShape(_contextMenuTargetShape))
             return;
 
         Shapes.Remove(_contextMenuTargetShape);
@@ -662,10 +746,28 @@ public class DrawingCanvasControl : Control
 
     private async void OnPropertiesRequested(object? sender, EventArgs e)
     {
-        if (_contextMenuTargetShape is null)
+        if (_contextMenuTargetShape is null || IsComputedShape(_contextMenuTargetShape))
             return;
 
         await ShowShapePropertiesDialogAsync(_contextMenuTargetShape);
+    }
+
+    private bool IsComputedShape(Shape shape)
+        => ComputedShapeIds.Contains(shape.Id);
+
+    public void SetShapeComputed(Shape shape, bool isComputed)
+    {
+        if (isComputed)
+        {
+            if (!ComputedShapeIds.Contains(shape.Id))
+                ComputedShapeIds.Add(shape.Id);
+        }
+        else
+        {
+            ComputedShapeIds.Remove(shape.Id);
+        }
+
+        InvalidateVisual();
     }
 
     private async Task ShowShapePropertiesDialogAsync(Shape shape)
@@ -923,7 +1025,7 @@ public class DrawingCanvasControl : Control
             return;
         }
 
-        if (_selectedShape is not null && HitTestHandle(_selectedShape, world.Value) != ShapeHandleKind.None)
+        if (_selectedShape is not null && !IsComputedShape(_selectedShape) && HitTestHandle(_selectedShape, world.Value) != ShapeHandleKind.None)
         {
             Cursor = HandCursor;
             return;
