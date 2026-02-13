@@ -73,7 +73,7 @@ public class MainWindowViewModel : ViewModelBase
             {
                 Header = "Ribbon",
                 IconData = IconService.CreateGeometry(Icon.app_window, IconType.regular),
-                Factory = () => new RibbonTestingPageView { DataContext = new RibbonTestingPageViewModel(DialogService) },
+                Factory = () => new RibbonTestingPageView { DataContext = new RibbonTestingPageViewModel(DialogService, InfoBarService) },
                 PageType = typeof(RibbonTestingPageView)
             },
             new NavigationItemControl

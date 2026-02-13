@@ -36,6 +36,7 @@ public class DrawingCanvasControl : Control
 
     private readonly DrawingCanvasContextMenu _contextMenu;
     private readonly Dictionary<string, Bitmap?> _imageCache = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _invalidImageWarnings = new(StringComparer.OrdinalIgnoreCase);
 
     private Shape? _previewShape;
     private Shape? _hoveredShape;
@@ -73,6 +74,9 @@ public class DrawingCanvasControl : Control
 
     public static readonly StyledProperty<IContentDialogService?> DialogServiceProperty =
         AvaloniaProperty.Register<DrawingCanvasControl, IContentDialogService?>(nameof(DialogService));
+
+    public static readonly StyledProperty<IInfoBarService?> InfoBarServiceProperty =
+        AvaloniaProperty.Register<DrawingCanvasControl, IInfoBarService?>(nameof(InfoBarService));
 
     public static readonly StyledProperty<double> MinZoomProperty =
         AvaloniaProperty.Register<DrawingCanvasControl, double>(nameof(MinZoom), 0.1d);
@@ -193,6 +197,12 @@ public class DrawingCanvasControl : Control
     {
         get => GetValue(DialogServiceProperty);
         set => SetValue(DialogServiceProperty, value);
+    }
+
+    public IInfoBarService? InfoBarService
+    {
+        get => GetValue(InfoBarServiceProperty);
+        set => SetValue(InfoBarServiceProperty, value);
     }
 
     public double MinZoom
@@ -1045,7 +1055,7 @@ public class DrawingCanvasControl : Control
 
         var topLeft = WorldToScreen(image.TopLeft);
         var bottomRight = WorldToScreen(image.BottomRight);
-        var rect = new Rect(topLeft, bottomRight);
+        var rect = CreateRectFromPoints(topLeft, bottomRight);
         context.DrawImage(bitmap, new Rect(0, 0, bitmap.PixelSize.Width, bitmap.PixelSize.Height), rect);
         context.DrawRectangle(null, pen, rect);
     }
@@ -1056,7 +1066,7 @@ public class DrawingCanvasControl : Control
 
         var topLeft = WorldToScreen(textBox.TopLeft);
         var bottomRight = WorldToScreen(textBox.BottomRight);
-        var rect = new Rect(topLeft, bottomRight);
+        var rect = CreateRectFromPoints(topLeft, bottomRight);
 
         var fontSize = Math.Max(8, textBox.FontSize * Zoom);
         var formattedText = new FormattedText(
@@ -1199,13 +1209,34 @@ public class DrawingCanvasControl : Control
         {
             var bitmap = new Bitmap(path);
             _imageCache[path] = bitmap;
+            _invalidImageWarnings.Remove(path);
             return bitmap;
         }
-        catch
+        catch (Exception ex)
         {
             _imageCache[path] = null;
+
+            if (_invalidImageWarnings.Add(path))
+                Dispatcher.UIThread.Post(() => _ = ShowImageLoadWarningAsync(path, ex.Message), DispatcherPriority.Background);
+
             return null;
         }
+    }
+
+    private Rect CreateRectFromPoints(AvaloniaPoint p1, AvaloniaPoint p2)
+        => new(Math.Min(p1.X, p2.X), Math.Min(p1.Y, p2.Y), Math.Abs(p2.X - p1.X), Math.Abs(p2.Y - p1.Y));
+
+    private async Task ShowImageLoadWarningAsync(string path, string details)
+    {
+        if (InfoBarService is null)
+            return;
+
+        await InfoBarService.ShowAsync(infoBar =>
+        {
+            infoBar.Severity = InfoBarSeverity.Warning;
+            infoBar.Title = "Image load failed";
+            infoBar.Message = $"Could not load image at '{path}'. {details}";
+        });
     }
 
     private AvaloniaPoint WorldToScreen(FlowVector world)
@@ -1216,7 +1247,11 @@ public class DrawingCanvasControl : Control
 
     private sealed class ActionCommand(Action execute) : ICommand
     {
-        public event EventHandler? CanExecuteChanged;
+        public event EventHandler? CanExecuteChanged
+        {
+            add { }
+            remove { }
+        }
 
         public bool CanExecute(object? parameter) => true;
 

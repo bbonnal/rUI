@@ -10,9 +10,10 @@ namespace rUIAvaloniaDesktopTester.ViewModels;
 
 public partial class RibbonTestingPageViewModel : ViewModelBase
 {
-    public RibbonTestingPageViewModel(IContentDialogService dialogService)
+    public RibbonTestingPageViewModel(IContentDialogService dialogService, IInfoBarService infoBarService)
     {
         DialogService = dialogService;
+        InfoBarService = infoBarService;
 
         SelectToolCommand = new RelayCommand(() => ActiveTool = DrawingTool.Select);
         SelectPointToolCommand = new RelayCommand(() => ActiveTool = DrawingTool.Point);
@@ -33,6 +34,8 @@ public partial class RibbonTestingPageViewModel : ViewModelBase
     }
 
     public IContentDialogService DialogService { get; }
+
+    public IInfoBarService InfoBarService { get; }
 
     public ObservableCollection<Shape> Shapes { get; } = [];
 
