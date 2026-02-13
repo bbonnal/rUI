@@ -43,6 +43,7 @@ public sealed class ResourceViewerControl : ContentControl
             NumericArrayResourceViewData values => new NumericArrayResourceViewerControl { Values = values.Values },
             ShapePropertyResourceViewData shape => new ShapePropertyResourceViewerControl { ShapeType = shape.ShapeType, Properties = shape.Properties },
             GraphSeriesResourceViewData series => new GraphSeriesResourceViewerControl { Values = series.Values },
+            LineCoordinatesResourceViewData lines => new LineCoordinatesResourceViewerControl { Lines = lines.Lines },
             _ => new TextBlock { Text = resource.Preview }
         };
     }
@@ -216,5 +217,35 @@ public sealed class GraphSeriesResourceViewerControl : Control
 
             previous = current;
         }
+    }
+}
+
+public sealed class LineCoordinatesResourceViewerControl : ContentControl
+{
+    public static readonly StyledProperty<IReadOnlyList<LineCoordinateEntry>> LinesProperty =
+        AvaloniaProperty.Register<LineCoordinatesResourceViewerControl, IReadOnlyList<LineCoordinateEntry>>(nameof(Lines), []);
+
+    public IReadOnlyList<LineCoordinateEntry> Lines
+    {
+        get => GetValue(LinesProperty);
+        set => SetValue(LinesProperty, value);
+    }
+
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+        if (change.Property == LinesProperty)
+            Content = Build();
+    }
+
+    private Control Build()
+    {
+        var list = new ListBox
+        {
+            ItemsSource = Lines.Select((line, index) => $"[{index}] {line.DisplayLabel}").ToArray(),
+            Height = 420
+        };
+
+        return list;
     }
 }

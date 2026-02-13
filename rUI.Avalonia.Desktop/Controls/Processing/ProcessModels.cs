@@ -20,6 +20,7 @@ public enum ResourceValueKind
     NumericArray,
     ShapeProperties,
     GraphSeries,
+    LineCoordinates,
     Unknown
 }
 
@@ -122,6 +123,27 @@ public sealed class ShapePropertyResourceViewData : ResourceViewData
     public string ShapeType { get; init; } = string.Empty;
 
     public IReadOnlyList<KeyValuePair<string, string>> Properties { get; init; } = [];
+}
+
+public sealed class LineCoordinateEntry
+{
+    public double StartX { get; init; }
+
+    public double StartY { get; init; }
+
+    public double EndX { get; init; }
+
+    public double EndY { get; init; }
+
+    public double Length { get; init; }
+
+    public string DisplayLabel =>
+        $"({StartX:0.###}, {StartY:0.###}) -> ({EndX:0.###}, {EndY:0.###}) | L={Length:0.###}";
+}
+
+public sealed class LineCoordinatesResourceViewData : ResourceViewData
+{
+    public IReadOnlyList<LineCoordinateEntry> Lines { get; init; } = [];
 }
 
 public sealed class ResourceEntryDescriptor

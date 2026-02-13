@@ -10,7 +10,7 @@
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="11.3.11" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.11" />
-    <PackageReference Include="Flowxel" Version="0.1.0" />
+    <PackageReference Include="Flowxel" Version="0.2.0" />
   </ItemGroup>
 
   <ItemGroup>
