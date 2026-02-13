@@ -169,6 +169,7 @@ public class DrawingCanvasControl : Control
     {
         Focusable = true;
         ClipToBounds = true;
+        RenderOptions.SetBitmapInterpolationMode(this, BitmapInterpolationMode.None);
         Shapes = [];
         AttachShapesCollection(Shapes);
 

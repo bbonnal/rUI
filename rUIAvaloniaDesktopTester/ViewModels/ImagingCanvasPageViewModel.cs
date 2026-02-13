@@ -619,7 +619,7 @@ public partial class ImagingCanvasPageViewModel : ViewModelBase
             SourcePath = overlayPath,
             Width = mat.Width,
             Height = mat.Height,
-            Pose = new Pose(new Vector(mat.Width * 0.5, mat.Height * 0.5), new Vector(1, 0))
+            Pose = new Pose(new Vector((mat.Width - 1) * 0.5, (mat.Height - 1) * 0.5), new Vector(1, 0))
         };
 
         Shapes.Add(imageShape);
