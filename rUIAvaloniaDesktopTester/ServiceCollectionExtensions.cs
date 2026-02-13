@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using rUI.Avalonia.Desktop;
 using rUI.Avalonia.Desktop.Services;
 using rUI.Avalonia.Desktop.Services.Logging;
+using rUI.Avalonia.Desktop.Services.Shortcuts;
 using rUI.Avalonia.Desktop.Translation;
 using rUIAvaloniaDesktopTester.ViewModels;
 using rUIAvaloniaDesktopTester.Views;
@@ -28,6 +29,7 @@ public static class ServiceCollectionExtensions
         _ = services.AddSingleton<IContentDialogService, ContentDialogService>();
         _ = services.AddSingleton<IInfoBarService, InfoBarService>();
         _ = services.AddSingleton<IOverlayService, OverlayService>();
+        _ = services.AddSingleton<IShortcutService, ShortcutService>();
 
         _ = services.AddSingleton<MainWindow>();
         _ = services.AddSingleton<MainWindowViewModel>();

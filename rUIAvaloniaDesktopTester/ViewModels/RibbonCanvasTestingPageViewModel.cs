@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.IO;
@@ -10,12 +11,13 @@ using CommunityToolkit.Mvvm.Input;
 using Flowxel.Core.Geometry.Shapes;
 using rUI.Avalonia.Desktop.Controls;
 using rUI.Avalonia.Desktop.Services;
+using rUI.Avalonia.Desktop.Services.Shortcuts;
 using rUI.Drawing.Core;
 using rUI.Drawing.Core.Scene;
 
 namespace rUIAvaloniaDesktopTester.ViewModels;
 
-public partial class RibbonCanvasTestingPageViewModel : ViewModelBase
+public partial class RibbonCanvasTestingPageViewModel : ViewModelBase, IShortcutBindingProvider
 {
     private readonly ISceneSerializer _sceneSerializer = new JsonSceneSerializer();
     private readonly ISvgSceneExporter _svgExporter = new SvgSceneExporter();
@@ -113,6 +115,28 @@ public partial class RibbonCanvasTestingPageViewModel : ViewModelBase
     public IAsyncRelayCommand ExportSvgCommand { get; }
     public IRelayCommand ClearCanvasCommand { get; }
     public IRelayCommand ResetViewCommand { get; }
+
+    public IEnumerable<ShortcutDefinition> GetShortcutDefinitions()
+    {
+        return
+        [
+            new ShortcutDefinition("Ctrl+S", SaveSceneCommand, Description: "Save scene"),
+            new ShortcutDefinition("Ctrl+O", LoadSceneCommand, Description: "Load scene"),
+            new ShortcutDefinition("Ctrl+Shift+E", ExportSvgCommand, Description: "Export SVG"),
+            new ShortcutDefinition("Ctrl+R", ResetViewCommand, Description: "Reset view"),
+            new ShortcutDefinition("Ctrl+Shift+Delete", ClearCanvasCommand, Description: "Clear canvas"),
+
+            new ShortcutDefinition("Escape", SelectToolCommand, Description: "Select tool"),
+            new ShortcutDefinition("P", SelectPointToolCommand, Description: "Point tool"),
+            new ShortcutDefinition("L", SelectLineToolCommand, Description: "Line tool"),
+            new ShortcutDefinition("R", SelectRectangleToolCommand, Description: "Rectangle tool"),
+            new ShortcutDefinition("C", SelectCircleToolCommand, Description: "Circle tool"),
+            new ShortcutDefinition("A", SelectArcToolCommand, Description: "Arc tool"),
+            new ShortcutDefinition("T", SelectTextToolCommand, Description: "Text tool"),
+            new ShortcutDefinition("M", SelectMultilineTextToolCommand, Description: "Multiline text tool"),
+            new ShortcutDefinition("I", SelectImageToolCommand, Description: "Image tool")
+        ];
+    }
 
     public string StatusText =>
         $"Tool: {ActiveTool} | Shapes: {Shapes.Count} (Computed: {ComputedShapeIds.Count}) | Boundary: {(ShowCanvasBoundary ? $"{CanvasBoundaryWidth:0.#}x{CanvasBoundaryHeight:0.#}" : "off")} | Cursor(Canvas): ({CursorCanvasPosition.X:0.000}, {CursorCanvasPosition.Y:0.000})";

@@ -1,3 +1,4 @@
+using System;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Data.Core;
@@ -15,6 +16,8 @@ namespace rUIAvaloniaDesktopTester;
 
 public partial class App : Application
 {
+    public static IServiceProvider? Services { get; private set; }
+
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
@@ -30,6 +33,7 @@ public partial class App : Application
         var servicesCollection = new ServiceCollection();
         servicesCollection.AddCommonServices();
         var services = new DefaultServiceProviderFactory().CreateServiceProvider(servicesCollection);
+        Services = services;
         TranslationBindingSource.Instance.Initialize(services.GetRequiredService<ITranslationService>());
         ViewLocator.Configure(ViewMappings.Create());
 

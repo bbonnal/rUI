@@ -89,7 +89,7 @@
                     <TextBlock Width="640"
                                TextWrapping="Wrap"
                                Foreground="{DynamicResource rUIForegroundSecondaryBrush}"
-                               Text="Select/Move: select, drag, and resize with handles. Draw tools create elements on drag. Middle mouse: pan. Wheel: zoom. Right click: context menu (shape properties, canvas settings, delete, center view). Scene can be saved/loaded as JSON and exported as SVG." />
+                               Text="Select/Move: select, drag, and resize with handles. Draw tools create elements on drag. Middle mouse: pan. Wheel: zoom. Right click: context menu (shape properties, canvas settings, delete, center view). Scene can be saved/loaded as JSON and exported as SVG. Shortcuts: Ctrl+S save, Ctrl+O load, Ctrl+Shift+E export, Ctrl+R reset, Esc select, P/L/R/C/A/T/M/I tool picks." />
                 </ruiRibbon:RibbonGroup>
             </ruiRibbon:RibbonTab>
         </ruiRibbon:RibbonControl>
