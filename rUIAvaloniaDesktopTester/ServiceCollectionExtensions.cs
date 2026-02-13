@@ -31,6 +31,7 @@ public static class ServiceCollectionExtensions
         _ = services.AddTransient<RibbonCanvasTestingPageViewModel>();
         _ = services.AddTransient<ImagingCanvasPageViewModel>();
         _ = services.AddTransient<DockingTestingPageViewModel>();
+        _ = services.AddTransient<DockingCanvasTestingPageViewModel>();
         _ = services.AddTransient<NavigationTestingPageViewModel>();
         _ = services.AddTransient<NavigationCancellationDemoPageViewModel>();
         _ = services.AddTransient<EditorsTestingPageViewModel>();

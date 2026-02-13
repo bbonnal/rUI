@@ -12,13 +12,48 @@ namespace rUI.Avalonia.Desktop.Controls.Docking;
 
 public class DockingControl : TemplatedControl
 {
+    private DockTabGroup? _focusedGroup;
     private ContentControl? _rootHost;
     private Border? _dropOverlay;
     private Panel? _rootPanel;
     private DockDragSession? _dragSession;
 
+    public static readonly StyledProperty<bool> EnablePaneFocusTrackingProperty =
+        AvaloniaProperty.Register<DockingControl, bool>(nameof(EnablePaneFocusTracking), false);
+
+    public static readonly StyledProperty<bool> HighlightFocusedPaneProperty =
+        AvaloniaProperty.Register<DockingControl, bool>(nameof(HighlightFocusedPane), false);
+
+    public static readonly DirectProperty<DockingControl, DockPane?> FocusedPaneProperty =
+        AvaloniaProperty.RegisterDirect<DockingControl, DockPane?>(
+            nameof(FocusedPane),
+            o => o.FocusedPane);
+
+    private DockPane? _focusedPane;
+
     [Content]
     public AvaloniaList<DockPane> Panes { get; } = new();
+
+    public bool EnablePaneFocusTracking
+    {
+        get => GetValue(EnablePaneFocusTrackingProperty);
+        set => SetValue(EnablePaneFocusTrackingProperty, value);
+    }
+
+    public bool HighlightFocusedPane
+    {
+        get => GetValue(HighlightFocusedPaneProperty);
+        set => SetValue(HighlightFocusedPaneProperty, value);
+    }
+
+    public DockPane? FocusedPane
+    {
+        get => _focusedPane;
+        private set => SetAndRaise(FocusedPaneProperty, ref _focusedPane, value);
+    }
+
+    public event EventHandler<DockPane?>? FocusedPaneChanged;
+    public event EventHandler<DockPane>? PaneClosed;
 
     protected override void OnApplyTemplate(TemplateAppliedEventArgs e)
     {
@@ -26,6 +61,7 @@ public class DockingControl : TemplatedControl
 
         if (_rootPanel is not null)
         {
+            _rootPanel.RemoveHandler(PointerPressedEvent, OnRootPointerPressed);
             _rootPanel.RemoveHandler(PointerMovedEvent, OnRootPointerMoved);
             _rootPanel.RemoveHandler(PointerReleasedEvent, OnRootPointerReleased);
         }
@@ -36,10 +72,13 @@ public class DockingControl : TemplatedControl
 
         if (_rootPanel is not null)
         {
+            _rootPanel.AddHandler(PointerPressedEvent, OnRootPointerPressed, RoutingStrategies.Bubble, true);
             _rootPanel.AddHandler(PointerMovedEvent, OnRootPointerMoved, RoutingStrategies.Bubble, true);
             _rootPanel.AddHandler(PointerReleasedEvent, OnRootPointerReleased, RoutingStrategies.Bubble, true);
         }
 
+        _focusedGroup = null;
+        FocusedPane = null;
         InitializeLayout();
     }
 
@@ -54,18 +93,39 @@ public class DockingControl : TemplatedControl
 
         WireGroup(group);
         _rootHost.Content = group;
+        if (EnablePaneFocusTracking)
+            SetFocusedGroup(group);
     }
 
     private void WireGroup(DockTabGroup group)
     {
         group.PaneDragStarted += OnPaneDragStarted;
         group.PaneCloseRequested += OnPaneCloseRequested;
+        group.SelectedPaneChanged += OnGroupSelectedPaneChanged;
     }
 
     private void UnwireGroup(DockTabGroup group)
     {
         group.PaneDragStarted -= OnPaneDragStarted;
         group.PaneCloseRequested -= OnPaneCloseRequested;
+        group.SelectedPaneChanged -= OnGroupSelectedPaneChanged;
+    }
+
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+
+        if (change.Property == EnablePaneFocusTrackingProperty)
+        {
+            if (!EnablePaneFocusTracking)
+                SetFocusedGroup(null);
+            else if (_focusedGroup is null && _rootHost?.Content is Control root)
+                SetFocusedGroup(FindFirstTabGroup(root));
+        }
+        else if (change.Property == HighlightFocusedPaneProperty)
+        {
+            ApplyFocusedGroupVisualState();
+        }
     }
 
     private void OnPaneDragStarted(object? sender, DockTabGroupEventArgs e)
@@ -77,6 +137,16 @@ public class DockingControl : TemplatedControl
         _dropOverlay.IsVisible = false;
 
         e.Pointer?.Capture(_rootPanel);
+    }
+
+    private void OnRootPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (!EnablePaneFocusTracking || _dragSession is not null || _rootPanel is null)
+            return;
+
+        var position = e.GetPosition(_rootPanel);
+        var targetGroup = HitTestTabGroup(position);
+        SetFocusedGroup(targetGroup);
     }
 
     private void OnRootPointerMoved(object? sender, PointerEventArgs e)
@@ -231,6 +301,9 @@ public class DockingControl : TemplatedControl
         // Collapse empty groups
         if (sourceGroup.Panes.Count == 0)
             CollapseEmptyGroup(sourceGroup);
+
+        if (EnablePaneFocusTracking)
+            SetFocusedGroup(targetGroup);
     }
 
     private void SplitGroup(DockTabGroup targetGroup, DockPane pane, DockPosition position)
@@ -271,6 +344,8 @@ public class DockingControl : TemplatedControl
             return;
 
         UnwireGroup(emptyGroup);
+        if (ReferenceEquals(_focusedGroup, emptyGroup))
+            SetFocusedGroup(null);
 
         // If the empty group is the root content
         if (_rootHost.Content == emptyGroup)
@@ -411,6 +486,11 @@ public class DockingControl : TemplatedControl
                 }
 
                 group.Panes.Remove(pane);
+                Panes.Remove(pane);
+                PaneClosed?.Invoke(this, pane);
+
+                if (EnablePaneFocusTracking && group.Panes.Count > 0)
+                    SetFocusedGroup(group);
 
                 if (group.Panes.Count == 0)
                     CollapseEmptyGroup(group);
@@ -423,6 +503,115 @@ public class DockingControl : TemplatedControl
     private void OnPaneCloseRequested(object? sender, DockTabGroupEventArgs e)
     {
         ClosePane(e.Pane);
+    }
+
+    private void OnGroupSelectedPaneChanged(object? sender, DockPane? pane)
+    {
+        if (!EnablePaneFocusTracking || sender is not DockTabGroup group)
+            return;
+
+        if (ReferenceEquals(_focusedGroup, group))
+            SetFocusedPane(pane);
+    }
+
+    private void SetFocusedGroup(DockTabGroup? group)
+    {
+        if (ReferenceEquals(_focusedGroup, group))
+        {
+            SetFocusedPane(group?.SelectedPane);
+            return;
+        }
+
+        if (_focusedGroup is not null)
+            UpdateGroupFocusVisual(_focusedGroup, false);
+
+        _focusedGroup = group;
+        ApplyFocusedGroupVisualState();
+        SetFocusedPane(group?.SelectedPane);
+    }
+
+    private void ApplyFocusedGroupVisualState()
+    {
+        if (_focusedGroup is not null)
+            UpdateGroupFocusVisual(_focusedGroup, EnablePaneFocusTracking && HighlightFocusedPane);
+    }
+
+    private void SetFocusedPane(DockPane? pane)
+    {
+        if (ReferenceEquals(FocusedPane, pane))
+            return;
+
+        FocusedPane = pane;
+        FocusedPaneChanged?.Invoke(this, pane);
+    }
+
+    public void AddPane(DockPane pane)
+    {
+        if (!Panes.Contains(pane))
+            Panes.Add(pane);
+
+        var host = _rootHost;
+        if (host is null)
+            return;
+
+        if (host.Content is null)
+        {
+            var group = new DockTabGroup();
+            group.Panes.Add(pane);
+            group.SelectedPane = pane;
+            WireGroup(group);
+            host.Content = group;
+            if (EnablePaneFocusTracking)
+                SetFocusedGroup(group);
+            return;
+        }
+
+        var targetGroup = EnablePaneFocusTracking && _focusedGroup is not null
+            ? _focusedGroup
+            : FindFirstTabGroup(host.Content as Control);
+
+        if (targetGroup is null)
+            return;
+
+        targetGroup.Panes.Add(pane);
+        targetGroup.SelectedPane = pane;
+        if (EnablePaneFocusTracking)
+            SetFocusedGroup(targetGroup);
+    }
+
+    private void UpdateGroupFocusVisual(DockTabGroup group, bool isFocused)
+    {
+        if (isFocused)
+        {
+            group.GroupBorderBrush = ResolveFocusOutlineBrush();
+            group.GroupBorderThickness = new Thickness(2);
+            return;
+        }
+
+        group.ClearValue(DockTabGroup.GroupBorderBrushProperty);
+        group.ClearValue(DockTabGroup.GroupBorderThicknessProperty);
+    }
+
+    private IBrush ResolveFocusOutlineBrush()
+    {
+        if (this.TryFindResource("rUIAccentBrush", ActualThemeVariant, out var resource) && resource is IBrush brush)
+            return brush;
+
+        return Brushes.DeepSkyBlue;
+    }
+
+    private static DockTabGroup? FindFirstTabGroup(Control? root)
+    {
+        if (root is null)
+            return null;
+
+        if (root is DockTabGroup group)
+            return group;
+
+        if (root is DockSplitContainer split)
+            return FindFirstTabGroup(split.First) ?? FindFirstTabGroup(split.Second);
+
+        return null;
     }
 
     private class DockDragSession

@@ -1,6 +1,5 @@
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -43,7 +42,6 @@ public partial class RibbonCanvasTestingPageViewModel : ViewModelBase
         SelectDimensionToolCommand = new RelayCommand(() => ActiveTool = DrawingTool.Dimension);
         SelectAngleDimensionToolCommand = new RelayCommand(() => ActiveTool = DrawingTool.AngleDimension);
 
-        ApplyCanvasSettingsCommand = new RelayCommand(ApplyCanvasSettings);
         SaveSceneCommand = new AsyncRelayCommand(SaveSceneAsync);
         LoadSceneCommand = new AsyncRelayCommand(LoadSceneAsync);
         ExportSvgCommand = new AsyncRelayCommand(ExportSvgAsync);
@@ -53,7 +51,7 @@ public partial class RibbonCanvasTestingPageViewModel : ViewModelBase
         Shapes.CollectionChanged += OnShapesCollectionChanged;
         ComputedShapeIds.CollectionChanged += OnComputedShapeIdsCollectionChanged;
 
-        ApplyCanvasSettings();
+        ApplyCanvasColor();
     }
 
     public IContentDialogService DialogService { get; }
@@ -89,12 +87,6 @@ public partial class RibbonCanvasTestingPageViewModel : ViewModelBase
     private bool showCanvasBoundary = true;
 
     [ObservableProperty]
-    private string canvasBoundaryWidthInput = "1920";
-
-    [ObservableProperty]
-    private string canvasBoundaryHeightInput = "1080";
-
-    [ObservableProperty]
     private double canvasBoundaryWidth = 1920;
 
     [ObservableProperty]
@@ -116,7 +108,6 @@ public partial class RibbonCanvasTestingPageViewModel : ViewModelBase
     public IRelayCommand SelectReferentialToolCommand { get; }
     public IRelayCommand SelectDimensionToolCommand { get; }
     public IRelayCommand SelectAngleDimensionToolCommand { get; }
-    public IRelayCommand ApplyCanvasSettingsCommand { get; }
     public IAsyncRelayCommand SaveSceneCommand { get; }
     public IAsyncRelayCommand LoadSceneCommand { get; }
     public IAsyncRelayCommand ExportSvgCommand { get; }
@@ -129,8 +120,12 @@ public partial class RibbonCanvasTestingPageViewModel : ViewModelBase
     partial void OnActiveToolChanged(DrawingTool value) => OnPropertyChanged(nameof(StatusText));
     partial void OnCursorCanvasPositionChanged(global::Avalonia.Point value) => OnPropertyChanged(nameof(StatusText));
     partial void OnShowCanvasBoundaryChanged(bool value) => OnPropertyChanged(nameof(StatusText));
+    partial void OnCanvasBoundaryWidthChanged(double value) => OnPropertyChanged(nameof(StatusText));
+    partial void OnCanvasBoundaryHeightChanged(double value) => OnPropertyChanged(nameof(StatusText));
+    partial void OnCanvasBackgroundBrushChanged(IBrush value) => CanvasBackgroundHex = ToHexColor(value);
+    partial void OnCanvasBackgroundHexChanged(string value) => ApplyCanvasColor();
 
-    private void ApplyCanvasSettings()
+    private void ApplyCanvasColor()
     {
         try
         {
@@ -140,14 +135,6 @@ public partial class RibbonCanvasTestingPageViewModel : ViewModelBase
         {
             // Keep previous brush when color parsing fails.
         }
-
-        if (double.TryParse(CanvasBoundaryWidthInput, NumberStyles.Float, CultureInfo.InvariantCulture, out var w) && w >= 0)
-            CanvasBoundaryWidth = w;
-
-        if (double.TryParse(CanvasBoundaryHeightInput, NumberStyles.Float, CultureInfo.InvariantCulture, out var h) && h >= 0)
-            CanvasBoundaryHeight = h;
-
-        OnPropertyChanged(nameof(StatusText));
     }
 
     private async Task SaveSceneAsync()
@@ -221,9 +208,8 @@ public partial class RibbonCanvasTestingPageViewModel : ViewModelBase
 
             CanvasBackgroundHex = scene.CanvasBackgroundColor;
             ShowCanvasBoundary = scene.ShowCanvasBoundary;
-            CanvasBoundaryWidthInput = scene.CanvasBoundaryWidth.ToString("0.###", CultureInfo.InvariantCulture);
-            CanvasBoundaryHeightInput = scene.CanvasBoundaryHeight.ToString("0.###", CultureInfo.InvariantCulture);
-            ApplyCanvasSettings();
+            CanvasBoundaryWidth = scene.CanvasBoundaryWidth;
+            CanvasBoundaryHeight = scene.CanvasBoundaryHeight;
 
             await InfoBarService.ShowAsync(infoBar =>
             {
@@ -341,4 +327,12 @@ public partial class RibbonCanvasTestingPageViewModel : ViewModelBase
 
     private void OnComputedShapeIdsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
         => OnPropertyChanged(nameof(StatusText));
+
+    private static string ToHexColor(IBrush brush)
+    {
+        if (brush is ISolidColorBrush solid)
+            return solid.Color.ToString();
+
+        return "#00000000";
+    }
 }

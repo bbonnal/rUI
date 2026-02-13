@@ -87,6 +87,12 @@ public class MainWindowViewModel : ViewModelBase
             },
             new NavigationItemControl
             {
+                Header = "Docked Canvas",
+                IconData = IconService.CreateGeometry(Icon.app_window, IconType.regular),
+                PageViewModelType = typeof(DockingCanvasTestingPageViewModel)
+            },
+            new NavigationItemControl
+            {
                 Header = "Navigate",
                 IconData = IconService.CreateGeometry(Icon.compass, IconType.regular),
                 PageViewModelType = typeof(NavigationTestingPageViewModel)

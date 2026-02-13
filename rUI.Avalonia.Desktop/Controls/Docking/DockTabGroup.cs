@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Data;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Media;
 using Avalonia.VisualTree;
 using Avalonia;
 
@@ -38,14 +39,33 @@ public class DockTabGroup : TemplatedControl
             nameof(SelectedPane),
             defaultBindingMode: BindingMode.TwoWay);
 
+    public static readonly StyledProperty<IBrush?> GroupBorderBrushProperty =
+        AvaloniaProperty.Register<DockTabGroup, IBrush?>(nameof(GroupBorderBrush));
+
+    public static readonly StyledProperty<Thickness> GroupBorderThicknessProperty =
+        AvaloniaProperty.Register<DockTabGroup, Thickness>(nameof(GroupBorderThickness), new Thickness(1));
+
     public DockPane? SelectedPane
     {
         get => GetValue(SelectedPaneProperty);
         set => SetValue(SelectedPaneProperty, value);
     }
 
+    public IBrush? GroupBorderBrush
+    {
+        get => GetValue(GroupBorderBrushProperty);
+        set => SetValue(GroupBorderBrushProperty, value);
+    }
+
+    public Thickness GroupBorderThickness
+    {
+        get => GetValue(GroupBorderThicknessProperty);
+        set => SetValue(GroupBorderThicknessProperty, value);
+    }
+
     public event EventHandler<DockTabGroupEventArgs>? PaneDragStarted;
     public event EventHandler<DockTabGroupEventArgs>? PaneCloseRequested;
+    public event EventHandler<DockPane?>? SelectedPaneChanged;
 
     protected override void OnApplyTemplate(TemplateAppliedEventArgs e)
     {
@@ -82,6 +102,8 @@ public class DockTabGroup : TemplatedControl
             var pane = change.GetNewValue<DockPane?>();
             if (_tabStrip.SelectedItem != pane)
                 _tabStrip.SelectedItem = pane;
+
+            SelectedPaneChanged?.Invoke(this, pane);
         }
     }
 

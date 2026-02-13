@@ -191,6 +191,7 @@ public class DrawingCanvasControl : Control
         AttachComputedShapeIdsCollection(ComputedShapeIds);
 
         _contextMenu = new DrawingCanvasContextMenu();
+        _contextMenu.CanvasSettingsRequested += OnCanvasSettingsRequested;
         _contextMenu.DeleteShapeRequested += OnDeleteShapeRequested;
         _contextMenu.CenterViewRequested += OnCenterViewRequested;
         _contextMenu.PropertiesRequested += OnPropertiesRequested;
@@ -789,6 +790,9 @@ public class DrawingCanvasControl : Control
     private void OnCenterViewRequested(object? sender, EventArgs e)
         => CenterViewOnOrigin();
 
+    private async void OnCanvasSettingsRequested(object? sender, EventArgs e)
+        => await ShowCanvasSettingsDialogAsync();
+
     private async void OnPropertiesRequested(object? sender, EventArgs e)
     {
         if (_contextMenuTargetShape is null || IsComputedShape(_contextMenuTargetShape))
@@ -833,6 +837,65 @@ public class DrawingCanvasControl : Control
             {
                 applyChanges();
                 _imageCache.Clear();
+                InvalidateVisual();
+            });
+        });
+    }
+
+    private async Task ShowCanvasSettingsDialogAsync()
+    {
+        if (DialogService is null)
+            return;
+
+        var initialColor = (CanvasBackground as ISolidColorBrush)?.Color.ToString() ?? "#00000000";
+        var colorBox = new TextBox
+        {
+            Text = initialColor,
+            MinWidth = 220,
+            Watermark = "#RRGGBB or #AARRGGBB"
+        };
+        var showBoundaryCheck = new CheckBox
+        {
+            IsChecked = ShowCanvasBoundary,
+            Content = "Show boundary"
+        };
+        var widthBox = new TextBox
+        {
+            Text = CanvasBoundaryWidth.ToString("0.###", CultureInfo.InvariantCulture),
+            MinWidth = 220
+        };
+        var heightBox = new TextBox
+        {
+            Text = CanvasBoundaryHeight.ToString("0.###", CultureInfo.InvariantCulture),
+            MinWidth = 220
+        };
+
+        var content = new StackPanel
+        {
+            Spacing = 8,
+            MinWidth = 420,
+            Children =
+            {
+                BuildLabeledEditorRow("Background color", colorBox),
+                showBoundaryCheck,
+                BuildLabeledEditorRow("Boundary width", widthBox),
+                BuildLabeledEditorRow("Boundary height", heightBox)
+            }
+        };
+
+        await DialogService.ShowAsync(dialog =>
+        {
+            dialog.Title = "Canvas settings";
+            dialog.Content = content;
+            dialog.PrimaryButtonText = "Apply";
+            dialog.CloseButtonText = "Cancel";
+            dialog.DefaultButton = DefaultButton.Primary;
+            dialog.PrimaryButtonCommand = new ActionCommand(() =>
+            {
+                CanvasBackground = TryParseBrushFromText(colorBox.Text, CanvasBackground);
+                ShowCanvasBoundary = showBoundaryCheck.IsChecked == true;
+                CanvasBoundaryWidth = ParseOrDefault(widthBox, CanvasBoundaryWidth);
+                CanvasBoundaryHeight = ParseOrDefault(heightBox, CanvasBoundaryHeight);
                 InvalidateVisual();
             });
         });
@@ -1041,19 +1104,6 @@ public class DrawingCanvasControl : Control
 
     private static TextBox AddTextEditor(Panel parent, string label, string value)
     {
-        var row = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            Spacing = 12
-        };
-
-        var labelControl = new TextBlock
-        {
-            Text = label,
-            Width = 160,
-            VerticalAlignment = VerticalAlignment.Center
-        };
-
         var editor = new TextBox
         {
             Text = value,
@@ -1061,16 +1111,43 @@ public class DrawingCanvasControl : Control
             HorizontalAlignment = HorizontalAlignment.Stretch
         };
 
-        row.Children.Add(labelControl);
-        row.Children.Add(editor);
-        parent.Children.Add(row);
+        parent.Children.Add(BuildLabeledEditorRow(label, editor));
         return editor;
+    }
+
+    private static Control BuildLabeledEditorRow(string label, Control editor)
+    {
+        var row = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 12
+        };
+
+        row.Children.Add(new TextBlock
+        {
+            Text = label,
+            Width = 160,
+            VerticalAlignment = VerticalAlignment.Center
+        });
+        row.Children.Add(editor);
+        return row;
     }
 
     private static double ParseOrDefault(TextBox box, double fallback)
     {
         if (double.TryParse(box.Text, NumberStyles.Float | NumberStyles.AllowThousands, CultureInfo.InvariantCulture, out var parsed))
             return parsed;
+
+        return fallback;
+    }
+
+    private static IBrush TryParseBrushFromText(string? text, IBrush fallback)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return fallback;
+
+        if (Color.TryParse(text.Trim(), out var color))
+            return new SolidColorBrush(color);
 
         return fallback;
     }

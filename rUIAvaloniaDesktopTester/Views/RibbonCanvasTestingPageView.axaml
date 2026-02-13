@@ -69,8 +69,6 @@
                 </ruiRibbon:RibbonGroup>
 
                 <ruiRibbon:RibbonGroup Header="Canvas &amp; Export">
-                    <ruiRibbon:RibbonButton Header="Apply Canvas"
-                                            Command="{Binding ApplyCanvasSettingsCommand}" />
                     <ruiRibbon:RibbonButton Header="Save Scene"
                                             Command="{Binding SaveSceneCommand}" />
                     <ruiRibbon:RibbonButton Header="Load Scene"
@@ -91,7 +89,7 @@
                     <TextBlock Width="640"
                                TextWrapping="Wrap"
                                Foreground="{DynamicResource rUIForegroundSecondaryBrush}"
-                               Text="Select/Move: select, drag, and resize with handles. Draw tools create elements on drag. Middle mouse: pan. Wheel: zoom. Right click: context menu (delete shape or center view). Scene can be saved/loaded as JSON and exported as SVG." />
+                               Text="Select/Move: select, drag, and resize with handles. Draw tools create elements on drag. Middle mouse: pan. Wheel: zoom. Right click: context menu (shape properties, canvas settings, delete, center view). Scene can be saved/loaded as JSON and exported as SVG." />
                 </ruiRibbon:RibbonGroup>
             </ruiRibbon:RibbonTab>
         </ruiRibbon:RibbonControl>
@@ -110,47 +108,22 @@
                                Foreground="{DynamicResource rUIForegroundSecondaryBrush}" />
                 </Border>
 
-                <Grid ColumnDefinitions="3*,1*"
-                      ColumnSpacing="10">
-                    <ruiDrawing:DrawingCanvasControl Grid.Column="0"
-                                                    Shapes="{Binding Shapes}"
-                                                    ActiveTool="{Binding ActiveTool}"
-                                                    Zoom="{Binding Zoom}"
-                                                    Pan="{Binding Pan}"
-                                                    CursorAvaloniaPosition="{Binding CursorAvaloniaPosition}"
-                                                    CursorCanvasPosition="{Binding CursorCanvasPosition}"
-                                                    DialogService="{Binding DialogService}"
-                                                    InfoBarService="{Binding InfoBarService}"
-                                                    ComputedShapeIds="{Binding ComputedShapeIds}"
-                                                    CanvasBackground="{Binding CanvasBackgroundBrush}"
-                                                    ShowCanvasBoundary="{Binding ShowCanvasBoundary}"
-                                                    CanvasBoundaryWidth="{Binding CanvasBoundaryWidth}"
-                                                    CanvasBoundaryHeight="{Binding CanvasBoundaryHeight}"
-                                                    ShapeStroke="{DynamicResource rUIAccentBrush}"
-                                                    PreviewStroke="{DynamicResource rUIWarningBrush}"
-                                                    HoverStroke="{DynamicResource rUIWarningBrush}" />
-
-                    <Border Grid.Column="1"
-                            BorderBrush="{DynamicResource rUIBorderSubtleBrush}"
-                            BorderThickness="1"
-                            CornerRadius="8"
-                            Padding="10">
-                        <StackPanel Spacing="8">
-                            <TextBlock Text="Canvas Settings" FontWeight="SemiBold" />
-                            <TextBlock Text="Background (hex)" />
-                            <TextBox Text="{Binding CanvasBackgroundHex, Mode=TwoWay}" Watermark="#101317" />
-                            <CheckBox Content="Show boundary"
-                                      IsChecked="{Binding ShowCanvasBoundary, Mode=TwoWay}" />
-                            <TextBlock Text="Boundary width" />
-                            <TextBox Text="{Binding CanvasBoundaryWidthInput, Mode=TwoWay}" />
-                            <TextBlock Text="Boundary height" />
-                            <TextBox Text="{Binding CanvasBoundaryHeightInput, Mode=TwoWay}" />
-                            <Button Content="Apply"
-                                    HorizontalAlignment="Right"
-                                    Command="{Binding ApplyCanvasSettingsCommand}" />
-                        </StackPanel>
-                    </Border>
-                </Grid>
+                <ruiDrawing:DrawingCanvasControl Shapes="{Binding Shapes}"
+                                                ActiveTool="{Binding ActiveTool}"
+                                                Zoom="{Binding Zoom}"
+                                                Pan="{Binding Pan}"
+                                                CursorAvaloniaPosition="{Binding CursorAvaloniaPosition}"
+                                                CursorCanvasPosition="{Binding CursorCanvasPosition}"
+                                                DialogService="{Binding DialogService}"
+                                                InfoBarService="{Binding InfoBarService}"
+                                                ComputedShapeIds="{Binding ComputedShapeIds}"
+                                                CanvasBackground="{Binding CanvasBackgroundBrush, Mode=TwoWay}"
+                                                ShowCanvasBoundary="{Binding ShowCanvasBoundary, Mode=TwoWay}"
+                                                CanvasBoundaryWidth="{Binding CanvasBoundaryWidth, Mode=TwoWay}"
+                                                CanvasBoundaryHeight="{Binding CanvasBoundaryHeight, Mode=TwoWay}"
+                                                ShapeStroke="{DynamicResource rUIAccentBrush}"
+                                                PreviewStroke="{DynamicResource rUIWarningBrush}"
+                                                HoverStroke="{DynamicResource rUIWarningBrush}" />
             </DockPanel>
         </Border>
     </DockPanel>
