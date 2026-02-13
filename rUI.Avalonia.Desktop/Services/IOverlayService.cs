@@ -4,6 +4,7 @@ namespace rUI.Avalonia.Desktop.Services;
 
 public interface IOverlayService
 {
+    void RegisterHost(OverlayControl overlay);
     // TODO: What is this action here ?
     Task ShowAsync(Action<OverlayControl>? configure = null);
     // TODO: What is this action here ?

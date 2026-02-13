@@ -1,54 +1,142 @@
-# CLAUDE.md
+# rUI Architecture
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This document describes the architectural decisions currently implemented in `rUI`, why they were made, and how they should guide future development.
 
-## Project
+## Goals
 
-**rUI.Avalonia.Desktop** is a reusable Avalonia control library. **rUIAvaloniaDesktopTester** is the companion WinExe app used to develop and test the controls.
+- Keep `rUI.Avalonia.Desktop` reusable and UI-framework focused.
+- Keep app composition decisions in `rUIAvaloniaDesktopTester` (the host app).
+- Scale to more pages/features without turning startup and navigation into manual object wiring.
+- Make future testing and refactoring easier by coding against interfaces.
 
-## Build & Run
+## Project Structure
 
-```bash
-dotnet build rUI.sln                                # Build all projects
-dotnet run --project rUIAvaloniaDesktopTester       # Run the tester app
-```
+- `rUI.Avalonia.Desktop`
+  - Reusable controls (`Navigation`, `Ribbon`, `Docking`, dialogs, overlays, info bar).
+  - Service abstractions and implementations (`INavigationService`, `IContentDialogService`, etc.).
+- `rUI.Drawing.Core`
+  - Shape/domain models, interaction engine, scene serialization/export contracts.
+- `rUI.Drawing.Avalonia`
+  - Canvas rendering and Avalonia-specific drawing behavior.
+- `rUIAvaloniaDesktopTester`
+  - App composition root, DI registrations, page ViewModels/Views.
 
-No test projects exist yet.
+## Key Architectural Decisions
 
-## Architecture
+## 1) Dependency Injection at the App Boundary
 
-- **Framework**: Avalonia 11.3 with FluentTheme (Dark variant), .NET 10.0
-- **MVVM**: CommunityToolkit.Mvvm with compiled bindings (`AvaloniaUseCompiledBindingsByDefault=true`)
-- **Icons**: PhosphorIconsAvalonia — use `IconService.CreateGeometry(Icon.xxx, IconType.regular)` for navigation item icons
+Decision:
+- Use DI in `rUIAvaloniaDesktopTester` to construct services, main window, and page ViewModels.
 
-### Multi-Project Structure
+Implementation:
+- Composition root in `rUIAvaloniaDesktopTester/App.axaml.cs`.
+- Registrations in `rUIAvaloniaDesktopTester/ServiceCollectionExtensions.cs`.
 
-**rUIAvaloniaDesktopTester** — Tester application (WinExe). Contains ViewModels, Views, and app entry point. Depends on CommunityToolkit.Mvvm, Enigma.Cryptography, LiveChartsCore, PhosphorIconsAvalonia.
+Why:
+- Centralizes object graph wiring.
+- Eliminates scattered `new ...` construction in ViewModels.
+- Makes future replacement (mock services, alternate implementations) straightforward.
 
-**rUI.Avalonia.Desktop** — Reusable control library (no CommunityToolkit dependency). Contains:
-- `Controls/` — TemplatedControls organized in subdirectories: `Navigation/`, `Docking/`, `Ribbon/`, `Editors/`, `CalendarSchedule/`, plus top-level `ContentDialog`, `OverlayControl`, `InfoBarControl`, `SettingsCardControl`, `SettingsCardExpander`
-- `Services/` — Each service control has a matching service + interface: `NavigationService`, `ContentDialogService`, `OverlayService`, `InfoBarService`
-- `Themes/` — Control templates (AXAML). Composed via `Fluent.axaml` and included in App.axaml as `avares://rUI.Avalonia.Desktop/Themes/Fluent.axaml`
+## 2) Type-Based Navigation (ViewModel-first)
 
-**rUI.Drawing.Core** — Drawing-domain contracts and primitives for drawing tools/features.
+Decision:
+- Navigation items store `PageViewModelType` instead of page/control factories.
+- `NavigationService` resolves ViewModels by type through `IServiceProvider`.
 
-**rUI.Drawing.Avalonia** — Avalonia drawing controls and UI interaction layer.
+Implementation:
+- `rUI.Avalonia.Desktop/Controls/Navigation/NavigationItemControl.cs`
+- `rUI.Avalonia.Desktop/INavigationService.cs`
+- `rUI.Avalonia.Desktop/Services/NavigationService.cs`
 
-### Patterns
+Why:
+- Navigation is decoupled from concrete view construction.
+- Page creation policy is owned by DI lifetimes, not ad-hoc lambdas.
+- Cleaner and more predictable lifecycle handling.
 
-- **ViewLocator**: Resolves views by replacing "ViewModel" with "View" in the type name. Page VMs go in `ViewModels/`, matching views in `Views/`. ViewModels must inherit from `ViewModelBase` (`ObservableObject`) to be matched.
-- **Naming**: Page ViewModels are `{Name}PageViewModel`, views are `{Name}PageView`.
-- **Navigation**: `NavigationService` holds `NavigationItemControl` instances. Selecting an item invokes its `Factory` (`Func<object>`) to create a page ViewModel, which `ContentControl` + `ViewLocator` renders.
-- **Host pattern**: `ContentDialog`, `OverlayControl`, and `InfoBarControl` are all hosted as siblings in MainWindow's root `Panel`. Each is registered with its service via `RegisterHost()` from `MainWindow.axaml.cs` `OnDataContextChanged`. ViewModels receive services through constructor injection from `MainWindowViewModel`.
-- **TemplatedControls**: Custom controls in rUI are `TemplatedControl` (not `UserControl`). C# classes go in `Controls/`, AXAML templates in `Themes/`. When adding a new control, also add its template include to `Themes/Fluent.axaml`. Use `{Binding ..., RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}` for two-way template bindings — `{TemplateBinding}` is one-way only in Avalonia.
-- **OnApplyTemplate pattern**: Controls find named template parts via `e.NameScope.Find<T>("PART_Name")` in `OnApplyTemplate`. Always detach old event handlers before attaching new ones, since `OnApplyTemplate` can be called multiple times.
+## 3) View Resolution via ViewLocator
 
-### Theme System
+Decision:
+- `Navigation.CurrentPage` is a ViewModel object.
+- Avalonia `ViewLocator` resolves the matching view (`FooViewModel` -> `FooView`).
 
-Colors are defined in `rUI.Avalonia.Desktop/Themes/Colors.axaml` using `ResourceDictionary.ThemeDictionaries` with `x:Key="Dark"` and `x:Key="Light"` variants. Brushes in `Brushes.axaml` reference colors via `{DynamicResource}` for runtime theme switching. Use `{DynamicResource rUIForegroundSecondaryBrush}` (not `StaticResource`) for theme-reactive styling. Key prefixes: `rUIBackground`, `rUISurface`, `rUIBorder`, `rUIForeground`, `rUIAccent`, `rUISuccess`, `rUIWarning`, `rUIError`.
+Implementation:
+- `rUIAvaloniaDesktopTester/ViewLocator.cs`
+- `rUIAvaloniaDesktopTester/App.axaml` data templates.
 
-### Gotchas
+Why:
+- Keeps ViewModels view-agnostic.
+- Reduces explicit view instantiation code.
 
-- **Namespace collision**: The `rUI.Avalonia.Desktop` namespace can make `Avalonia.Media` (and similar) resolve incorrectly as `rUI.Avalonia.Media`. Use `global::Avalonia.Media` or `using global::Avalonia.Media;` in C# files that need Avalonia sub-namespaces.
-- **Compiled bindings require `x:DataType`**: Every UserControl/DataTemplate using `{Binding}` needs an explicit `x:DataType` or the build fails with AVLN2100.
-- **Hit testing requires a Background**: A `Border` or `Panel` with no `Background` (null) is invisible to pointer events. Set `Background="Transparent"` on elements that need to receive clicks/hover across their full area.
+## 4) Lifetime Policy (Improvement over naive DI)
+
+Decision:
+- Singleton: cross-cutting app services and main shell.
+- Transient: page ViewModels.
+
+Implementation:
+- `rUIAvaloniaDesktopTester/ServiceCollectionExtensions.cs`
+
+Why:
+- Avoids stale state and accidental state sharing across navigations.
+- Still keeps expensive shared services centralized.
+
+## 5) Host Pattern for UI Services
+
+Decision:
+- Dialog/overlay/info bar controls are hosted in `MainWindow` and registered with corresponding services.
+
+Implementation:
+- `rUIAvaloniaDesktopTester/Views/MainWindow.axaml`
+- `rUIAvaloniaDesktopTester/Views/MainWindow.axaml.cs`
+
+Why:
+- Clear boundary between service API and visual host.
+- Service usage stays simple in ViewModels.
+
+## Consequences for Future Development
+
+## Adding a New Page
+
+1. Create `XxxPageViewModel` and `XxxPageView`.
+2. Register `XxxPageViewModel` in DI (typically transient).
+3. Add a `NavigationItemControl` with `PageViewModelType = typeof(XxxPageViewModel)`.
+4. Do not manually instantiate page view/viewmodel in `MainWindowViewModel`.
+
+## Adding a New Service
+
+1. Define interface in `rUI.Avalonia.Desktop/Services`.
+2. Implement service in `rUI.Avalonia.Desktop/Services`.
+3. Register in DI in `ServiceCollectionExtensions.cs`.
+4. Inject interface into consumers.
+
+## Navigation Rules
+
+- Use `INavigationService.NavigateToAsync<TViewModel>()`.
+- Do not navigate by creating views/controls manually.
+- Keep navigation lifecycle logic (`OnAppearingAsync` / `OnDisappearingAsync`) inside viewmodels implementing `INavigationViewModel`.
+
+## State Rules
+
+- Prefer transient page VMs unless the page must intentionally preserve state globally.
+- If persistent state is needed, move state into a dedicated singleton state service.
+
+## Testing Implications
+
+- ViewModels can be tested by injecting fake/mock interfaces.
+- Navigation behavior can be tested at service level by substituting DI registrations.
+
+## Constraints and Gotchas
+
+- Compiled bindings require valid `x:DataType` for binding-heavy XAML.
+- Avoid parameterless-constructor assumptions in XAML design-time if constructors are DI-only.
+- Keep DI framework usage in host app; reusable libraries should depend on abstractions, not app-specific composition logic.
+
+## Direction Summary
+
+The app is now directed toward a modular architecture where:
+- reusable UI components live in library projects,
+- composition lives at the app edge,
+- navigation is ViewModel/type-driven,
+- and object creation is governed by explicit DI lifetimes.
+
+This is the intended foundation for scaling features without increasing coupling.

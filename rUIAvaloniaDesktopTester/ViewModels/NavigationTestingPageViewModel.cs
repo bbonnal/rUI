@@ -1,31 +1,30 @@
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.Input;
-using rUI.Avalonia.Desktop.Services;
-using rUIAvaloniaDesktopTester.Views;
+using rUI.Avalonia.Desktop;
 
 namespace rUIAvaloniaDesktopTester.ViewModels;
 
 public class NavigationTestingPageViewModel : ViewModelBase
 {
-    public NavigationTestingPageViewModel(NavigationService navigation)
+    public NavigationTestingPageViewModel(INavigationService navigation)
     {
         _navigation = navigation;
         NavigateToSettingsCommand = new AsyncRelayCommand(NavigateToSettings);
         NavigateToDummyCommand = new AsyncRelayCommand(NavigateToDummy);
     }
 
-    private readonly NavigationService _navigation;
+    private readonly INavigationService _navigation;
 
     public IAsyncRelayCommand NavigateToSettingsCommand { get; }
     public IAsyncRelayCommand NavigateToDummyCommand { get; }
 
     private async Task NavigateToSettings()
     {
-        await _navigation.NavigateToAsync(new SettingsPageView { DataContext = new SettingsPageViewModel() });
+        await _navigation.NavigateToAsync<SettingsPageViewModel>();
     }
 
     private async Task NavigateToDummy()
     {
-        await _navigation.NavigateToAsync(new DummyPageView { DataContext = new DummyPageViewModel() });
+        await _navigation.NavigateToAsync<DummyPageViewModel>();
     }
 }

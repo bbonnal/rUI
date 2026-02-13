@@ -13,10 +13,6 @@
         Title="Enigma"
         Background="{DynamicResource rUIBackgroundBrush}">
 
-    <Design.DataContext>
-        <vm:MainWindowViewModel />
-    </Design.DataContext>
-
     <Panel>
         <DockPanel>
             <!-- Add button at top -->

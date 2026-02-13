@@ -1,4 +1,4 @@
-using Avalonia.Controls;
+using rUI.Avalonia.Desktop.Controls.Navigation;
 
 namespace rUI.Avalonia.Desktop;
 
@@ -8,14 +8,39 @@ namespace rUI.Avalonia.Desktop;
 public interface INavigationService
 {
     /// <summary>
-    /// Gets the currently displayed page.
+    /// Gets or sets the currently selected navigation item.
     /// </summary>
-    Control? CurrentPage { get; }
+    NavigationItemControl? SelectedItem { get; set; }
 
     /// <summary>
-    /// Navigates to the specified page asynchronously.
+    /// Gets the main navigation items.
     /// </summary>
-    /// <param name="page">The control to navigate to.</param>
-    /// <returns>A task representing the asynchronous operation.</returns>
-    Task NavigateToAsync(Control page);
+    IReadOnlyList<NavigationItemControl> Items { get; }
+
+    /// <summary>
+    /// Gets the footer navigation items.
+    /// </summary>
+    IReadOnlyList<NavigationItemControl>? FooterItems { get; }
+
+    /// <summary>
+    /// Initializes navigation items.
+    /// </summary>
+    void Initialize(IReadOnlyList<NavigationItemControl> items, IReadOnlyList<NavigationItemControl>? footerItems = null);
+
+    /// <summary>
+    /// Gets the currently displayed page ViewModel.
+    /// </summary>
+    object? CurrentPage { get; }
+
+    /// <summary>
+    /// Navigates to a page by resolving the specified ViewModel type.
+    /// </summary>
+    /// <typeparam name="TViewModel">The ViewModel type to navigate to.</typeparam>
+    Task NavigateToAsync<TViewModel>() where TViewModel : class;
+
+    /// <summary>
+    /// Navigates to a page by resolving the specified ViewModel type.
+    /// </summary>
+    /// <param name="viewModelType">The ViewModel type to navigate to.</param>
+    Task NavigateToAsync(Type viewModelType);
 }
