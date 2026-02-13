@@ -5,9 +5,9 @@ using rUI.Avalonia.Desktop.Controls.Navigation;
 namespace rUI.Avalonia.Desktop.Services;
 
 /// <summary>
-/// Navigation service using type-based ViewModel resolution via IServiceProvider.
+/// Navigation service using type-based ViewModel resolution via abstraction.
 /// </summary>
-public class NavigationService(IServiceProvider serviceProvider) : ObservableObject, INavigationService
+public class NavigationService(INavigationViewModelResolver resolver) : ObservableObject, INavigationService
 {
     private readonly SemaphoreSlim _navigationLock = new(1, 1);
 
@@ -98,8 +98,7 @@ public class NavigationService(IServiceProvider serviceProvider) : ObservableObj
     }
 
     private object ResolveViewModel(Type viewModelType)
-        => serviceProvider.GetService(viewModelType)
-           ?? throw new InvalidOperationException($"ViewModel type '{viewModelType.FullName}' is not registered in DI.");
+        => resolver.Resolve(viewModelType);
 
     private NavigationItemControl? FindItemForViewModel(Type viewModelType)
     {

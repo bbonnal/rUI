@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <IsPackable>true</IsPackable>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <NoWarn>$(NoWarn);NU5128</NoWarn>
+
+    <PackageId>rUI</PackageId>
+    <Title>rUI Meta Package</Title>
+    <Description>Meta package for the rUI framework. Installs the core rUI control packages.</Description>
+    <Authors>rUI</Authors>
+    <PackageTags>rUI;Avalonia;UI;controls;drawing</PackageTags>
+    <RootNamespace>rUI</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\rUI.Drawing.Core\rUI.Drawing.Core.csproj" />
+    <ProjectReference Include="..\rUI.Avalonia.Desktop\rUI.Avalonia.Desktop.csproj" />
+    <ProjectReference Include="..\rUI.Drawing.Avalonia\rUI.Drawing.Avalonia.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -11,6 +11,7 @@ public static class ServiceCollectionExtensions
     public static void AddCommonServices(this IServiceCollection services)
     {
         // Core app services are shared and host-backed.
+        _ = services.AddSingleton<INavigationViewModelResolver, ServiceProviderNavigationViewModelResolver>();
         _ = services.AddSingleton<NavigationService>();
         _ = services.AddSingleton<INavigationService>(sp => sp.GetRequiredService<NavigationService>());
         _ = services.AddSingleton<IContentDialogService, ContentDialogService>();

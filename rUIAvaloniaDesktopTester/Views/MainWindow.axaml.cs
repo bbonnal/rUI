@@ -22,4 +22,12 @@ public partial class MainWindow : Window
             vm.InfoBarService.RegisterHost(HostInfoBar);
         }
     }
+
+    protected override async void OnOpened(EventArgs e)
+    {
+        base.OnOpened(e);
+
+        if (DataContext is MainWindowViewModel vm)
+            await vm.InitializeAsync();
+    }
 }

@@ -29,6 +29,7 @@ public partial class App : Application
         var servicesCollection = new ServiceCollection();
         servicesCollection.AddCommonServices();
         var services = new DefaultServiceProviderFactory().CreateServiceProvider(servicesCollection);
+        ViewLocator.Configure(ViewMappings.Create());
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {

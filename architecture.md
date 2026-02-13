@@ -41,7 +41,7 @@ Why:
 
 Decision:
 - Navigation items store `PageViewModelType` instead of page/control factories.
-- `NavigationService` resolves ViewModels by type through `IServiceProvider`.
+- `NavigationService` resolves ViewModels by type through `INavigationViewModelResolver`.
 
 Implementation:
 - `rUI.Avalonia.Desktop/Controls/Navigation/NavigationItemControl.cs`
@@ -50,22 +50,24 @@ Implementation:
 
 Why:
 - Navigation is decoupled from concrete view construction.
-- Page creation policy is owned by DI lifetimes, not ad-hoc lambdas.
+- `rUI.Avalonia.Desktop` stays DI-framework agnostic.
+- Page creation policy is owned by host composition and DI lifetimes, not ad-hoc lambdas.
 - Cleaner and more predictable lifecycle handling.
 
-## 3) View Resolution via ViewLocator
+## 3) Explicit View Resolution via ViewLocator
 
 Decision:
 - `Navigation.CurrentPage` is a ViewModel object.
-- Avalonia `ViewLocator` resolves the matching view (`FooViewModel` -> `FooView`).
+- Avalonia `ViewLocator` resolves views through an explicit mapping table (not name-based reflection).
 
 Implementation:
 - `rUIAvaloniaDesktopTester/ViewLocator.cs`
+- `rUIAvaloniaDesktopTester/ViewMappings.cs`
 - `rUIAvaloniaDesktopTester/App.axaml` data templates.
 
 Why:
 - Keeps ViewModels view-agnostic.
-- Reduces explicit view instantiation code.
+- Makes missing mappings deterministic and testable.
 
 ## 4) Lifetime Policy (Improvement over naive DI)
 
@@ -124,6 +126,7 @@ Why:
 
 - ViewModels can be tested by injecting fake/mock interfaces.
 - Navigation behavior can be tested at service level by substituting DI registrations.
+- Architecture guards can enforce boundary rules and mapping completeness (`rUI.ArchitectureTests`).
 
 ## Constraints and Gotchas
 

@@ -1,3 +1,4 @@
+using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Media;
 using Avalonia.Styling;
@@ -11,6 +12,8 @@ namespace rUIAvaloniaDesktopTester.ViewModels;
 
 public class MainWindowViewModel : ViewModelBase
 {
+    private bool _isInitialized;
+
     public MainWindowViewModel(
         INavigationService navigation,
         IContentDialogService dialogService,
@@ -130,7 +133,6 @@ public class MainWindowViewModel : ViewModelBase
         };
 
         Navigation.Initialize(items, footerItems);
-        Navigation.NavigateToAsync<GenerateKeysPageViewModel>().GetAwaiter().GetResult();
     }
 
     public INavigationService Navigation { get; }
@@ -140,6 +142,15 @@ public class MainWindowViewModel : ViewModelBase
     public object Logo { get; }
 
     public IRelayCommand ToggleThemeCommand { get; }
+
+    public async Task InitializeAsync()
+    {
+        if (_isInitialized)
+            return;
+
+        _isInitialized = true;
+        await Navigation.NavigateToAsync<GenerateKeysPageViewModel>();
+    }
 
     private void ToggleTheme()
     {
