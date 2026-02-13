@@ -151,6 +151,51 @@ public static class ShapeInteractionEngine
                     Text = $"{Math.Abs(sweep * 180 / Math.PI):0.#}°"
                 };
             }
+            case DrawingTool.Text:
+                return new TextShape
+                {
+                    Pose = CreatePose(start.X, start.Y),
+                    FontSize = Math.Max(12, delta.M * 0.1),
+                    Text = "Text"
+                };
+            case DrawingTool.MultilineText:
+            {
+                if (!TryBuildAxisAlignedBox(start, end, minShapeSize, out var center, out var width, out _))
+                    return null;
+
+                return new MultilineTextShape
+                {
+                    Pose = CreatePose(center.X, center.Y),
+                    Width = width,
+                    FontSize = 16,
+                    Text = "Line 1\nLine 2"
+                };
+            }
+            case DrawingTool.Icon:
+                return new IconShape
+                {
+                    Pose = CreatePose(start.X, start.Y),
+                    Size = Math.Max(16, delta.M),
+                    IconKey = "★"
+                };
+            case DrawingTool.Arc:
+            {
+                var radius = delta.M;
+                if (radius <= minShapeSize)
+                    return null;
+
+                var sweep = new Vector(1, 0).AngleTo(delta.Normalize());
+                if (Math.Abs(sweep) <= 0.05)
+                    sweep = Math.PI / 2;
+
+                return new ArcShape
+                {
+                    Pose = CreatePose(start.X, start.Y),
+                    Radius = radius,
+                    StartAngleRad = 0,
+                    SweepAngleRad = sweep
+                };
+            }
             default:
                 return null;
         }
@@ -189,6 +234,14 @@ public static class ShapeInteractionEngine
                 return IsDimensionHit(dimension, world, tolerance);
             case AngleDimensionShape angleDimension:
                 return IsAngleDimensionHit(angleDimension, world, tolerance);
+            case TextShape text:
+                return Distance(text.Pose.Position, world) <= Math.Max(tolerance * 2, text.FontSize * 0.5);
+            case MultilineTextShape multilineText:
+                return Distance(multilineText.Pose.Position, world) <= Math.Max(tolerance * 2, multilineText.FontSize);
+            case IconShape icon:
+                return Distance(icon.Pose.Position, world) <= Math.Max(tolerance * 2, icon.Size * 0.6);
+            case ArcShape arc:
+                return IsArcHit(arc, world, tolerance);
             default:
                 return false;
         }
@@ -260,6 +313,24 @@ public static class ShapeInteractionEngine
                     new ShapeHandle(ShapeHandleKind.AngleDimensionEnd, angleDimension.EndPoint),
                     new ShapeHandle(ShapeHandleKind.AngleDimensionRadius, angleDimension.MidPoint)
                 ];
+            case TextShape text:
+                return [new ShapeHandle(ShapeHandleKind.Move, text.Pose.Position)];
+            case MultilineTextShape multilineText:
+                return [new ShapeHandle(ShapeHandleKind.Move, multilineText.Pose.Position)];
+            case IconShape icon:
+                return
+                [
+                    new ShapeHandle(ShapeHandleKind.Move, icon.Pose.Position),
+                    new ShapeHandle(ShapeHandleKind.CircleRadius, icon.Pose.Position.Translate(new Vector(icon.Size * 0.5, 0)))
+                ];
+            case ArcShape arc:
+                return
+                [
+                    new ShapeHandle(ShapeHandleKind.Move, arc.Center),
+                    new ShapeHandle(ShapeHandleKind.AngleDimensionStart, arc.StartPoint),
+                    new ShapeHandle(ShapeHandleKind.AngleDimensionEnd, arc.EndPoint),
+                    new ShapeHandle(ShapeHandleKind.AngleDimensionRadius, arc.MidPoint)
+                ];
             default:
                 return [];
         }
@@ -313,6 +384,20 @@ public static class ShapeInteractionEngine
                 break;
             case AngleDimensionShape angleDimension:
                 ApplyAngleDimensionDrag(angleDimension, handle, world, lastWorld, minShapeSize);
+                break;
+            case TextShape text:
+                if ((handle is ShapeHandleKind.Move or ShapeHandleKind.PointPosition) && lastWorld is not null)
+                    text.Translate(world - lastWorld.Value);
+                break;
+            case MultilineTextShape multilineText:
+                if ((handle is ShapeHandleKind.Move or ShapeHandleKind.PointPosition) && lastWorld is not null)
+                    multilineText.Translate(world - lastWorld.Value);
+                break;
+            case IconShape icon:
+                ApplyIconDrag(icon, handle, world, lastWorld, minShapeSize);
+                break;
+            case ArcShape arc:
+                ApplyArcDrag(arc, handle, world, lastWorld, minShapeSize);
                 break;
         }
     }
@@ -589,6 +674,46 @@ public static class ShapeInteractionEngine
         }
     }
 
+    private static void ApplyIconDrag(IconShape shape, ShapeHandleKind handle, Vector world, Vector? lastWorld, double minShapeSize)
+    {
+        switch (handle)
+        {
+            case ShapeHandleKind.Move when lastWorld is not null:
+                shape.Translate(world - lastWorld.Value);
+                return;
+            case ShapeHandleKind.CircleRadius:
+                shape.Size = Math.Max(Distance(shape.Pose.Position, world) * 2, minShapeSize);
+                return;
+        }
+    }
+
+    private static void ApplyArcDrag(ArcShape shape, ShapeHandleKind handle, Vector world, Vector? lastWorld, double minShapeSize)
+    {
+        switch (handle)
+        {
+            case ShapeHandleKind.Move when lastWorld is not null:
+                shape.Translate(world - lastWorld.Value);
+                return;
+            case ShapeHandleKind.AngleDimensionStart:
+            {
+                var end = shape.EndAngleRad;
+                var newStart = GetLocalAngle(shape.Pose, world);
+                shape.StartAngleRad = newStart;
+                shape.SweepAngleRad = ClampSweep(end - newStart);
+                return;
+            }
+            case ShapeHandleKind.AngleDimensionEnd:
+            {
+                var end = GetLocalAngle(shape.Pose, world);
+                shape.SweepAngleRad = ClampSweep(end - shape.StartAngleRad);
+                return;
+            }
+            case ShapeHandleKind.AngleDimensionRadius:
+                shape.Radius = Math.Max(Distance(shape.Center, world), minShapeSize);
+                return;
+        }
+    }
+
     private static void SetLineFromEndpoints(Line line, Vector start, Vector end, double minShapeSize)
     {
         var delta = end - start;
@@ -708,6 +833,17 @@ public static class ShapeInteractionEngine
 
         var localAngle = dimension.Pose.Orientation.Normalize().AngleTo(radial.Normalize());
         return IsAngleOnSweep(localAngle, dimension.StartAngleRad, dimension.SweepAngleRad);
+    }
+
+    private static bool IsArcHit(ArcShape arc, Vector point, double tolerance)
+    {
+        var radial = point - arc.Center;
+        var radiusDistance = Math.Abs(radial.M - arc.Radius);
+        if (radiusDistance > tolerance || radial.M <= 0.0000001)
+            return false;
+
+        var localAngle = arc.Pose.Orientation.Normalize().AngleTo(radial.Normalize());
+        return IsAngleOnSweep(localAngle, arc.StartAngleRad, arc.SweepAngleRad);
     }
 
     private static bool IsAngleOnSweep(double angle, double start, double sweep)

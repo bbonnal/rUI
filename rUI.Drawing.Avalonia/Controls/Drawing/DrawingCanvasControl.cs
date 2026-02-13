@@ -95,6 +95,20 @@ public class DrawingCanvasControl : Control
             nameof(CanvasBackground),
             Brushes.Transparent);
 
+    public static readonly StyledProperty<bool> ShowCanvasBoundaryProperty =
+        AvaloniaProperty.Register<DrawingCanvasControl, bool>(nameof(ShowCanvasBoundary), false);
+
+    public static readonly StyledProperty<double> CanvasBoundaryWidthProperty =
+        AvaloniaProperty.Register<DrawingCanvasControl, double>(nameof(CanvasBoundaryWidth), 0d);
+
+    public static readonly StyledProperty<double> CanvasBoundaryHeightProperty =
+        AvaloniaProperty.Register<DrawingCanvasControl, double>(nameof(CanvasBoundaryHeight), 0d);
+
+    public static readonly StyledProperty<IBrush> CanvasBoundaryStrokeProperty =
+        AvaloniaProperty.Register<DrawingCanvasControl, IBrush>(
+            nameof(CanvasBoundaryStroke),
+            Brushes.DimGray);
+
     public static readonly StyledProperty<IBrush> ShapeStrokeProperty =
         AvaloniaProperty.Register<DrawingCanvasControl, IBrush>(
             nameof(ShapeStroke),
@@ -244,6 +258,30 @@ public class DrawingCanvasControl : Control
         set => SetValue(CanvasBackgroundProperty, value);
     }
 
+    public bool ShowCanvasBoundary
+    {
+        get => GetValue(ShowCanvasBoundaryProperty);
+        set => SetValue(ShowCanvasBoundaryProperty, value);
+    }
+
+    public double CanvasBoundaryWidth
+    {
+        get => GetValue(CanvasBoundaryWidthProperty);
+        set => SetValue(CanvasBoundaryWidthProperty, Math.Max(0, value));
+    }
+
+    public double CanvasBoundaryHeight
+    {
+        get => GetValue(CanvasBoundaryHeightProperty);
+        set => SetValue(CanvasBoundaryHeightProperty, Math.Max(0, value));
+    }
+
+    public IBrush CanvasBoundaryStroke
+    {
+        get => GetValue(CanvasBoundaryStrokeProperty);
+        set => SetValue(CanvasBoundaryStrokeProperty, value);
+    }
+
     public IBrush ShapeStroke
     {
         get => GetValue(ShapeStrokeProperty);
@@ -358,6 +396,7 @@ public class DrawingCanvasControl : Control
         base.Render(context);
 
         context.FillRectangle(CanvasBackground, new Rect(Bounds.Size));
+        DrawCanvasBoundary(context);
         DrawOriginMarker(context);
 
         foreach (var shape in Shapes)
@@ -416,6 +455,11 @@ public class DrawingCanvasControl : Control
         if (change.Property == ZoomProperty ||
             change.Property == PanProperty ||
             change.Property == ActiveToolProperty ||
+            change.Property == CanvasBackgroundProperty ||
+            change.Property == ShowCanvasBoundaryProperty ||
+            change.Property == CanvasBoundaryWidthProperty ||
+            change.Property == CanvasBoundaryHeightProperty ||
+            change.Property == CanvasBoundaryStrokeProperty ||
             change.Property == HoverStrokeProperty ||
             change.Property == ComputedStrokeProperty ||
             change.Property == SelectedStrokeProperty ||
@@ -923,6 +967,54 @@ public class DrawingCanvasControl : Control
                 };
                 break;
             }
+            case TextShape text:
+            {
+                var textValueBox = AddTextEditor(container, "Text", text.Text);
+                var fontSizeBox = AddTextEditor(container, "Font size", text.FontSize.ToString("0.###", CultureInfo.InvariantCulture));
+                specificApply = () =>
+                {
+                    text.Text = textValueBox.Text ?? string.Empty;
+                    text.FontSize = Math.Max(ParseOrDefault(fontSizeBox, text.FontSize), 1);
+                };
+                break;
+            }
+            case MultilineTextShape multilineText:
+            {
+                var textValueBox = AddTextEditor(container, "Text (\\n supported)", multilineText.Text);
+                var fontSizeBox = AddTextEditor(container, "Font size", multilineText.FontSize.ToString("0.###", CultureInfo.InvariantCulture));
+                var widthBox = AddTextEditor(container, "Width", multilineText.Width.ToString("0.###", CultureInfo.InvariantCulture));
+                specificApply = () =>
+                {
+                    multilineText.Text = textValueBox.Text ?? string.Empty;
+                    multilineText.FontSize = Math.Max(ParseOrDefault(fontSizeBox, multilineText.FontSize), 1);
+                    multilineText.Width = Math.Max(ParseOrDefault(widthBox, multilineText.Width), MinShapeSize);
+                };
+                break;
+            }
+            case IconShape icon:
+            {
+                var iconBox = AddTextEditor(container, "Icon glyph", icon.IconKey);
+                var sizeBox = AddTextEditor(container, "Size", icon.Size.ToString("0.###", CultureInfo.InvariantCulture));
+                specificApply = () =>
+                {
+                    icon.IconKey = string.IsNullOrWhiteSpace(iconBox.Text) ? icon.IconKey : iconBox.Text;
+                    icon.Size = Math.Max(ParseOrDefault(sizeBox, icon.Size), MinShapeSize);
+                };
+                break;
+            }
+            case ArcShape arc:
+            {
+                var radiusBox = AddTextEditor(container, "Radius", arc.Radius.ToString("0.###", CultureInfo.InvariantCulture));
+                var startDegBox = AddTextEditor(container, "Start angle (deg)", (arc.StartAngleRad * 180 / Math.PI).ToString("0.###", CultureInfo.InvariantCulture));
+                var sweepDegBox = AddTextEditor(container, "Sweep angle (deg)", (arc.SweepAngleRad * 180 / Math.PI).ToString("0.###", CultureInfo.InvariantCulture));
+                specificApply = () =>
+                {
+                    arc.Radius = Math.Max(ParseOrDefault(radiusBox, arc.Radius), MinShapeSize);
+                    arc.StartAngleRad = ParseOrDefault(startDegBox, arc.StartAngleRad * 180 / Math.PI) * Math.PI / 180;
+                    arc.SweepAngleRad = ParseOrDefault(sweepDegBox, arc.SweepAngleRad * 180 / Math.PI) * Math.PI / 180;
+                };
+                break;
+            }
         }
 
         apply = () =>
@@ -1067,6 +1159,17 @@ public class DrawingCanvasControl : Control
         context.DrawLine(yPen, new AvaloniaPoint(center.X, center.Y - size), new AvaloniaPoint(center.X, center.Y + size));
     }
 
+    private void DrawCanvasBoundary(DrawingContext context)
+    {
+        if (!ShowCanvasBoundary || CanvasBoundaryWidth <= 0 || CanvasBoundaryHeight <= 0)
+            return;
+
+        var topLeft = WorldToScreen(new FlowVector(0, 0));
+        var bottomRight = WorldToScreen(new FlowVector(CanvasBoundaryWidth, CanvasBoundaryHeight));
+        var rect = CreateRectFromPoints(topLeft, bottomRight);
+        context.DrawRectangle(null, new Pen(CanvasBoundaryStroke, 1.5), rect);
+    }
+
     private void DrawGrabHandles(DrawingContext context, Shape shape)
     {
         var pen = new Pen(HandleStroke, 1.5);
@@ -1140,6 +1243,18 @@ public class DrawingCanvasControl : Control
                 break;
             case AngleDimensionShape angleDimension:
                 DrawAngleDimensionShape(context, angleDimension, pen, strokeBrush);
+                break;
+            case TextShape text:
+                DrawTextShape(context, text, strokeBrush);
+                break;
+            case MultilineTextShape multilineText:
+                DrawMultilineTextShape(context, multilineText, strokeBrush);
+                break;
+            case IconShape icon:
+                DrawIconShape(context, icon, strokeBrush);
+                break;
+            case ArcShape arc:
+                DrawArcShape(context, arc, pen);
                 break;
         }
     }
@@ -1262,6 +1377,66 @@ public class DrawingCanvasControl : Control
             strokeBrush);
 
         context.DrawText(formattedText, new AvaloniaPoint(mid.X + 4, mid.Y - formattedText.Height - 2));
+    }
+
+    private void DrawTextShape(DrawingContext context, TextShape text, IBrush strokeBrush)
+    {
+        var formattedText = new FormattedText(
+            text.Text,
+            CultureInfo.CurrentCulture,
+            FlowDirection.LeftToRight,
+            new Typeface("Segoe UI"),
+            Math.Max(8, text.FontSize * Zoom),
+            strokeBrush);
+
+        var position = WorldToScreen(text.Pose.Position);
+        context.DrawText(formattedText, position);
+    }
+
+    private void DrawMultilineTextShape(DrawingContext context, MultilineTextShape multilineText, IBrush strokeBrush)
+    {
+        var formattedText = new FormattedText(
+            multilineText.Text,
+            CultureInfo.CurrentCulture,
+            FlowDirection.LeftToRight,
+            new Typeface("Segoe UI"),
+            Math.Max(8, multilineText.FontSize * Zoom),
+            strokeBrush)
+        {
+            MaxTextWidth = Math.Max(8, multilineText.Width * Zoom)
+        };
+
+        var position = WorldToScreen(multilineText.Pose.Position);
+        context.DrawText(formattedText, position);
+    }
+
+    private void DrawIconShape(DrawingContext context, IconShape icon, IBrush strokeBrush)
+    {
+        var formattedText = new FormattedText(
+            icon.IconKey,
+            CultureInfo.CurrentCulture,
+            FlowDirection.LeftToRight,
+            new Typeface("Segoe UI"),
+            Math.Max(8, icon.Size * Zoom),
+            strokeBrush);
+
+        var position = WorldToScreen(icon.Pose.Position);
+        context.DrawText(formattedText, position);
+    }
+
+    private void DrawArcShape(DrawingContext context, ArcShape arc, Pen pen)
+    {
+        var span = Math.Abs(arc.SweepAngleRad);
+        var segmentCount = Math.Clamp((int)(span * 18), 8, 72);
+        var previous = arc.PointOnArc(arc.StartAngleRad);
+        for (var i = 1; i <= segmentCount; i++)
+        {
+            var t = (double)i / segmentCount;
+            var angle = arc.StartAngleRad + (arc.SweepAngleRad * t);
+            var current = arc.PointOnArc(angle);
+            context.DrawLine(pen, WorldToScreen(previous), WorldToScreen(current));
+            previous = current;
+        }
     }
 
     private void DrawClosedPolyline(DrawingContext context, Pen pen, params FlowVector[] points)

@@ -13,5 +13,9 @@ public enum DrawingTool
     CenterlineRectangle = 8,
     Referential = 9,
     Dimension = 10,
-    AngleDimension = 11
+    AngleDimension = 11,
+    Text = 12,
+    MultilineText = 13,
+    Icon = 14,
+    Arc = 15
 }

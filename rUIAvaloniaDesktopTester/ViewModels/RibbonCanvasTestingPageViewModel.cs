@@ -1,9 +1,11 @@
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Avalonia.Controls;
+using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Flowxel.Core.Geometry.Shapes;
@@ -17,6 +19,7 @@ namespace rUIAvaloniaDesktopTester.ViewModels;
 public partial class RibbonCanvasTestingPageViewModel : ViewModelBase
 {
     private readonly ISceneSerializer _sceneSerializer = new JsonSceneSerializer();
+    private readonly ISvgSceneExporter _svgExporter = new SvgSceneExporter();
 
     public RibbonCanvasTestingPageViewModel(IContentDialogService dialogService, IInfoBarService infoBarService)
     {
@@ -30,19 +33,27 @@ public partial class RibbonCanvasTestingPageViewModel : ViewModelBase
         SelectCircleToolCommand = new RelayCommand(() => ActiveTool = DrawingTool.Circle);
         SelectImageToolCommand = new RelayCommand(() => ActiveTool = DrawingTool.Image);
         SelectTextBoxToolCommand = new RelayCommand(() => ActiveTool = DrawingTool.TextBox);
+        SelectTextToolCommand = new RelayCommand(() => ActiveTool = DrawingTool.Text);
+        SelectMultilineTextToolCommand = new RelayCommand(() => ActiveTool = DrawingTool.MultilineText);
+        SelectIconToolCommand = new RelayCommand(() => ActiveTool = DrawingTool.Icon);
+        SelectArcToolCommand = new RelayCommand(() => ActiveTool = DrawingTool.Arc);
         SelectArrowToolCommand = new RelayCommand(() => ActiveTool = DrawingTool.Arrow);
         SelectCenterlineRectangleToolCommand = new RelayCommand(() => ActiveTool = DrawingTool.CenterlineRectangle);
         SelectReferentialToolCommand = new RelayCommand(() => ActiveTool = DrawingTool.Referential);
         SelectDimensionToolCommand = new RelayCommand(() => ActiveTool = DrawingTool.Dimension);
         SelectAngleDimensionToolCommand = new RelayCommand(() => ActiveTool = DrawingTool.AngleDimension);
 
+        ApplyCanvasSettingsCommand = new RelayCommand(ApplyCanvasSettings);
         SaveSceneCommand = new AsyncRelayCommand(SaveSceneAsync);
         LoadSceneCommand = new AsyncRelayCommand(LoadSceneAsync);
+        ExportSvgCommand = new AsyncRelayCommand(ExportSvgAsync);
         ClearCanvasCommand = new RelayCommand(ClearCanvas);
         ResetViewCommand = new RelayCommand(ResetView);
 
         Shapes.CollectionChanged += OnShapesCollectionChanged;
         ComputedShapeIds.CollectionChanged += OnComputedShapeIdsCollectionChanged;
+
+        ApplyCanvasSettings();
     }
 
     public IContentDialogService DialogService { get; }
@@ -68,6 +79,27 @@ public partial class RibbonCanvasTestingPageViewModel : ViewModelBase
     [ObservableProperty]
     private global::Avalonia.Point cursorCanvasPosition;
 
+    [ObservableProperty]
+    private string canvasBackgroundHex = "#101317";
+
+    [ObservableProperty]
+    private IBrush canvasBackgroundBrush = new SolidColorBrush(Color.Parse("#101317"));
+
+    [ObservableProperty]
+    private bool showCanvasBoundary = true;
+
+    [ObservableProperty]
+    private string canvasBoundaryWidthInput = "1920";
+
+    [ObservableProperty]
+    private string canvasBoundaryHeightInput = "1080";
+
+    [ObservableProperty]
+    private double canvasBoundaryWidth = 1920;
+
+    [ObservableProperty]
+    private double canvasBoundaryHeight = 1080;
+
     public IRelayCommand SelectToolCommand { get; }
     public IRelayCommand SelectPointToolCommand { get; }
     public IRelayCommand SelectLineToolCommand { get; }
@@ -75,41 +107,70 @@ public partial class RibbonCanvasTestingPageViewModel : ViewModelBase
     public IRelayCommand SelectCircleToolCommand { get; }
     public IRelayCommand SelectImageToolCommand { get; }
     public IRelayCommand SelectTextBoxToolCommand { get; }
+    public IRelayCommand SelectTextToolCommand { get; }
+    public IRelayCommand SelectMultilineTextToolCommand { get; }
+    public IRelayCommand SelectIconToolCommand { get; }
+    public IRelayCommand SelectArcToolCommand { get; }
     public IRelayCommand SelectArrowToolCommand { get; }
     public IRelayCommand SelectCenterlineRectangleToolCommand { get; }
     public IRelayCommand SelectReferentialToolCommand { get; }
     public IRelayCommand SelectDimensionToolCommand { get; }
     public IRelayCommand SelectAngleDimensionToolCommand { get; }
+    public IRelayCommand ApplyCanvasSettingsCommand { get; }
     public IAsyncRelayCommand SaveSceneCommand { get; }
     public IAsyncRelayCommand LoadSceneCommand { get; }
+    public IAsyncRelayCommand ExportSvgCommand { get; }
     public IRelayCommand ClearCanvasCommand { get; }
     public IRelayCommand ResetViewCommand { get; }
 
     public string StatusText =>
-        $"Tool: {ActiveTool} | Shapes: {Shapes.Count} (Computed: {ComputedShapeIds.Count}) | Zoom: {Zoom:0.00}x | Pan: ({Pan.X:0.0}, {Pan.Y:0.0}) | Cursor(Avalonia): ({CursorAvaloniaPosition.X:0.0}, {CursorAvaloniaPosition.Y:0.0}) | Cursor(Canvas): ({CursorCanvasPosition.X:0.00}, {CursorCanvasPosition.Y:0.00})";
+        $"Tool: {ActiveTool} | Shapes: {Shapes.Count} (Computed: {ComputedShapeIds.Count}) | Boundary: {(ShowCanvasBoundary ? $"{CanvasBoundaryWidth:0.#}x{CanvasBoundaryHeight:0.#}" : "off")} | Cursor(Canvas): ({CursorCanvasPosition.X:0.000}, {CursorCanvasPosition.Y:0.000})";
 
     partial void OnActiveToolChanged(DrawingTool value) => OnPropertyChanged(nameof(StatusText));
-
-    partial void OnZoomChanged(double value) => OnPropertyChanged(nameof(StatusText));
-
-    partial void OnPanChanged(global::Avalonia.Vector value) => OnPropertyChanged(nameof(StatusText));
-
-    partial void OnCursorAvaloniaPositionChanged(global::Avalonia.Point value) => OnPropertyChanged(nameof(StatusText));
-
     partial void OnCursorCanvasPositionChanged(global::Avalonia.Point value) => OnPropertyChanged(nameof(StatusText));
+    partial void OnShowCanvasBoundaryChanged(bool value) => OnPropertyChanged(nameof(StatusText));
+
+    private void ApplyCanvasSettings()
+    {
+        try
+        {
+            CanvasBackgroundBrush = new SolidColorBrush(Color.Parse(CanvasBackgroundHex));
+        }
+        catch
+        {
+            // Keep previous brush when color parsing fails.
+        }
+
+        if (double.TryParse(CanvasBoundaryWidthInput, NumberStyles.Float, CultureInfo.InvariantCulture, out var w) && w >= 0)
+            CanvasBoundaryWidth = w;
+
+        if (double.TryParse(CanvasBoundaryHeightInput, NumberStyles.Float, CultureInfo.InvariantCulture, out var h) && h >= 0)
+            CanvasBoundaryHeight = h;
+
+        OnPropertyChanged(nameof(StatusText));
+    }
 
     private async Task SaveSceneAsync()
     {
-        var path = await PromptScenePathAsync("Save scene", "Save", "ribbon-canvas-scene.json");
+        var path = await PromptPathAsync("Save scene", "Save", "ribbon-canvas-scene.json", "Absolute path to .json scene file");
         if (string.IsNullOrWhiteSpace(path))
             return;
 
         try
         {
             var computed = ComputedShapeIds.ToHashSet(System.StringComparer.Ordinal);
-            var scene = SceneDocumentMapper.ToDocument(Shapes, computed);
-            var json = _sceneSerializer.Serialize(scene);
+            var baseScene = SceneDocumentMapper.ToDocument(Shapes, computed);
+            var scene = new SceneDocument
+            {
+                Version = baseScene.Version,
+                Shapes = baseScene.Shapes,
+                CanvasBackgroundColor = CanvasBackgroundHex,
+                ShowCanvasBoundary = ShowCanvasBoundary,
+                CanvasBoundaryWidth = CanvasBoundaryWidth,
+                CanvasBoundaryHeight = CanvasBoundaryHeight
+            };
 
+            var json = _sceneSerializer.Serialize(scene);
             var directory = Path.GetDirectoryName(path);
             if (!string.IsNullOrWhiteSpace(directory))
                 Directory.CreateDirectory(directory);
@@ -136,7 +197,7 @@ public partial class RibbonCanvasTestingPageViewModel : ViewModelBase
 
     private async Task LoadSceneAsync()
     {
-        var path = await PromptScenePathAsync("Load scene", "Load", "ribbon-canvas-scene.json");
+        var path = await PromptPathAsync("Load scene", "Load", "ribbon-canvas-scene.json", "Absolute path to .json scene file");
         if (string.IsNullOrWhiteSpace(path))
             return;
 
@@ -158,6 +219,12 @@ public partial class RibbonCanvasTestingPageViewModel : ViewModelBase
             foreach (var id in loaded.ComputedShapeIds)
                 ComputedShapeIds.Add(id);
 
+            CanvasBackgroundHex = scene.CanvasBackgroundColor;
+            ShowCanvasBoundary = scene.ShowCanvasBoundary;
+            CanvasBoundaryWidthInput = scene.CanvasBoundaryWidth.ToString("0.###", CultureInfo.InvariantCulture);
+            CanvasBoundaryHeightInput = scene.CanvasBoundaryHeight.ToString("0.###", CultureInfo.InvariantCulture);
+            ApplyCanvasSettings();
+
             await InfoBarService.ShowAsync(infoBar =>
             {
                 infoBar.Severity = InfoBarSeverity.Success;
@@ -176,12 +243,57 @@ public partial class RibbonCanvasTestingPageViewModel : ViewModelBase
         }
     }
 
-    private async Task<string?> PromptScenePathAsync(string title, string primaryButtonText, string defaultFileName)
+    private async Task ExportSvgAsync()
+    {
+        var path = await PromptPathAsync("Export SVG", "Export", "ribbon-canvas-export.svg", "Absolute path to .svg file");
+        if (string.IsNullOrWhiteSpace(path))
+            return;
+
+        try
+        {
+            var computed = ComputedShapeIds.ToHashSet(System.StringComparer.Ordinal);
+            var baseScene = SceneDocumentMapper.ToDocument(Shapes, computed);
+            var scene = new SceneDocument
+            {
+                Version = baseScene.Version,
+                Shapes = baseScene.Shapes,
+                CanvasBackgroundColor = CanvasBackgroundHex,
+                ShowCanvasBoundary = ShowCanvasBoundary,
+                CanvasBoundaryWidth = CanvasBoundaryWidth,
+                CanvasBoundaryHeight = CanvasBoundaryHeight
+            };
+
+            var svg = _svgExporter.Export(scene);
+            var directory = Path.GetDirectoryName(path);
+            if (!string.IsNullOrWhiteSpace(directory))
+                Directory.CreateDirectory(directory);
+
+            await File.WriteAllTextAsync(path, svg);
+
+            await InfoBarService.ShowAsync(infoBar =>
+            {
+                infoBar.Severity = InfoBarSeverity.Success;
+                infoBar.Title = "SVG exported";
+                infoBar.Message = path;
+            });
+        }
+        catch (System.Exception ex)
+        {
+            await InfoBarService.ShowAsync(infoBar =>
+            {
+                infoBar.Severity = InfoBarSeverity.Error;
+                infoBar.Title = "SVG export failed";
+                infoBar.Message = ex.Message;
+            });
+        }
+    }
+
+    private async Task<string?> PromptPathAsync(string title, string primaryButtonText, string defaultFileName, string watermark)
     {
         var pathBox = new TextBox
         {
             Width = 560,
-            Watermark = "Absolute path to .json scene file"
+            Watermark = watermark
         };
 
         var defaultPath = Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.MyDocuments), defaultFileName);
@@ -195,7 +307,7 @@ public partial class RibbonCanvasTestingPageViewModel : ViewModelBase
                 Spacing = 10,
                 Children =
                 {
-                    new TextBlock { Text = "Scene file path:" },
+                    new TextBlock { Text = "File path:" },
                     pathBox
                 }
             };

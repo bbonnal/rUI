@@ -6,6 +6,14 @@ public sealed class SceneDocument
 
     public int Version { get; init; } = CurrentVersion;
 
+    public string CanvasBackgroundColor { get; init; } = "#00000000";
+
+    public bool ShowCanvasBoundary { get; init; }
+
+    public double CanvasBoundaryWidth { get; init; }
+
+    public double CanvasBoundaryHeight { get; init; }
+
     public List<SceneShapeDto> Shapes { get; init; } = [];
 }
 
@@ -52,4 +60,8 @@ public sealed record class SceneShapeDto
     public string? Text { get; init; }
 
     public string? SourcePath { get; init; }
+
+    public string? IconKey { get; init; }
+
+    public double? Size { get; init; }
 }

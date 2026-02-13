@@ -6,6 +6,8 @@ public partial class RibbonCanvasTestingPageView : UserControl
 {
     public RibbonCanvasTestingPageView()
     {
+        
         InitializeComponent();
+        
     }
 }

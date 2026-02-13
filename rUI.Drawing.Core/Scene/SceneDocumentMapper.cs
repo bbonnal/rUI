@@ -94,6 +94,28 @@ public static class SceneDocumentMapper
                 SweepAngleRad = angle.SweepAngleRad,
                 Text = angle.Text
             },
+            TextShape text => CreateBase(text, "Text", isComputed) with
+            {
+                Text = text.Text,
+                FontSize = text.FontSize
+            },
+            MultilineTextShape multilineText => CreateBase(multilineText, "MultilineText", isComputed) with
+            {
+                Text = multilineText.Text,
+                FontSize = multilineText.FontSize,
+                Width = multilineText.Width
+            },
+            IconShape icon => CreateBase(icon, "Icon", isComputed) with
+            {
+                IconKey = icon.IconKey,
+                Size = icon.Size
+            },
+            ArcShape arc => CreateBase(arc, "Arc", isComputed) with
+            {
+                Radius = arc.Radius,
+                StartAngleRad = arc.StartAngleRad,
+                SweepAngleRad = arc.SweepAngleRad
+            },
             _ => null
         };
     }
@@ -156,6 +178,32 @@ public static class SceneDocumentMapper
                 StartAngleRad = dto.StartAngleRad ?? 0,
                 SweepAngleRad = dto.SweepAngleRad ?? (Math.PI / 2),
                 Text = dto.Text ?? string.Empty
+            },
+            "Text" => new TextShape
+            {
+                Pose = pose,
+                Text = dto.Text ?? "Text",
+                FontSize = dto.FontSize ?? 20
+            },
+            "MultilineText" => new MultilineTextShape
+            {
+                Pose = pose,
+                Text = dto.Text ?? "Line 1\nLine 2",
+                FontSize = dto.FontSize ?? 16,
+                Width = dto.Width ?? 240
+            },
+            "Icon" => new IconShape
+            {
+                Pose = pose,
+                IconKey = dto.IconKey ?? "★",
+                Size = dto.Size ?? 32
+            },
+            "Arc" => new ArcShape
+            {
+                Pose = pose,
+                Radius = dto.Radius ?? 40,
+                StartAngleRad = dto.StartAngleRad ?? 0,
+                SweepAngleRad = dto.SweepAngleRad ?? (Math.PI / 2)
             },
             _ => null
         };
