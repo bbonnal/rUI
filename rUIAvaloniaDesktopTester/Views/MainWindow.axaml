@@ -1,0 +1,44 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:rUIAvaloniaDesktopTester.ViewModels"
+        xmlns:controls="using:rUI.Avalonia.Desktop.Controls"
+        xmlns:nav="using:rUI.Avalonia.Desktop.Controls.Navigation"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        x:Class="rUIAvaloniaDesktopTester.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Icon="/Assets/avalonia-logo.ico"
+        Title="Enigma"
+        Background="{DynamicResource rUIBackgroundBrush}">
+
+    <Design.DataContext>
+        <vm:MainWindowViewModel />
+    </Design.DataContext>
+
+    <Panel>
+        <DockPanel>
+            <!-- Add button at top -->
+            <StackPanel DockPanel.Dock="Top"
+                        Orientation="Horizontal"
+                        HorizontalAlignment="Right"
+                        Margin="8">
+                <Button Content="Toggle Theme"
+                        Command="{Binding ToggleThemeCommand}" />
+            </StackPanel>
+
+            <!-- Existing navigation and content -->
+            <nav:NavigationControl DockPanel.Dock="Left"
+                                   Items="{Binding Navigation.Items}"
+                                   FooterItems="{Binding Navigation.FooterItems}"
+                                   SelectedItem="{Binding Navigation.SelectedItem}"
+                                    />
+            <ContentControl Content="{Binding Navigation.CurrentPage}"
+                            Margin="0" />
+        </DockPanel>
+
+        <controls:ContentDialog x:Name="HostDialog" />
+        <controls:OverlayControl x:Name="HostOverlay" />
+        <controls:InfoBarControl x:Name="HostInfoBar" />
+    </Panel>
+</Window>

@@ -1,0 +1,81 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:rUIAvaloniaDesktopTester.ViewModels"
+             xmlns:rui="using:rUI.Avalonia.Desktop.Controls"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:pia="using:PhosphorIconsAvalonia.Markup"
+             mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="700"
+             x:Class="rUIAvaloniaDesktopTester.Views.SettingsPageView"
+             x:DataType="vm:SettingsPageViewModel">
+
+    <ScrollViewer>
+        <StackPanel Margin="24" Spacing="16">
+            <TextBlock Text="Settings"
+                       FontSize="24"
+                       FontWeight="SemiBold" />
+            <TextBlock Text="Manage application preferences and configuration."
+                       Foreground="{DynamicResource rUIForegroundSecondaryBrush}" />
+
+            <!-- General -->
+            <TextBlock Text="General"
+                       FontSize="16"
+                       FontWeight="SemiBold"
+                       Margin="0,8,0,0" />
+
+            <rui:SettingsCardControl Header="Appearance"
+                                        Description="Change theme, colors, and display options"
+                                        IconData="{pia:IconGeometry Icon=palette}"
+                                        Command="{Binding CardClickedCommand}"
+                                        CommandParameter="Appearance" />
+
+            <rui:SettingsCardControl Header="Language"
+                                        Description="Set your preferred language and region"
+                                        IconData="{pia:IconGeometry Icon=translate}"
+                                        Command="{Binding CardClickedCommand}"
+                                        CommandParameter="Language" />
+
+            <!-- Security -->
+            <TextBlock Text="Security"
+                       FontSize="16"
+                       FontWeight="SemiBold"
+                       Margin="0,8,0,0" />
+
+            <rui:SettingsCardControl Header="Encryption"
+                                        Description="Configure default encryption algorithms and key sizes"
+                                        IconData="{pia:IconGeometry Icon=lock_key}"
+                                        Command="{Binding CardClickedCommand}"
+                                        CommandParameter="Encryption" />
+
+            <rui:SettingsCardControl Header="Key Management"
+                                        Description="Manage stored keys, certificates, and trust settings"
+                                        IconData="{pia:IconGeometry Icon=key}"
+                                        Command="{Binding CardClickedCommand}"
+                                        CommandParameter="Key Management" />
+
+            <!-- About -->
+            <TextBlock Text="About"
+                       FontSize="16"
+                       FontWeight="SemiBold"
+                       Margin="0,8,0,0" />
+
+            <rui:SettingsCardControl Header="Updates"
+                                        Description="Check for application updates"
+                                        IconData="{pia:IconGeometry Icon=arrow_clockwise}"
+                                        Command="{Binding CardClickedCommand}"
+                                        CommandParameter="Updates" />
+
+            <rui:SettingsCardControl Header="About Enigma"
+                                        Description="Version info, licenses, and acknowledgements"
+                                        IconData="{pia:IconGeometry Icon=info}"
+                                        Command="{Binding CardClickedCommand}"
+                                        CommandParameter="About Enigma" />
+
+            <!-- Feedback -->
+            <TextBlock Text="{Binding LastAction}"
+                       IsVisible="{Binding LastAction, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                       FontWeight="SemiBold"
+                       Margin="0,8,0,0" />
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

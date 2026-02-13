@@ -1,0 +1,83 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:rUIAvaloniaDesktopTester.ViewModels"
+             xmlns:ruiRibbon="using:rUI.Avalonia.Desktop.Controls.Ribbon"
+             xmlns:ruiDrawing="using:rUI.Drawing.Avalonia.Controls.Drawing"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:pia="using:PhosphorIconsAvalonia.Markup"
+             mc:Ignorable="d"
+             d:DesignWidth="1000"
+             d:DesignHeight="700"
+             x:Class="rUIAvaloniaDesktopTester.Views.RibbonTestingPageView"
+             x:DataType="vm:RibbonTestingPageViewModel">
+
+    <DockPanel>
+        <ruiRibbon:RibbonControl DockPanel.Dock="Top">
+            <ruiRibbon:RibbonTab Header="Draw">
+                <ruiRibbon:RibbonGroup Header="Tools">
+                    <ruiRibbon:RibbonButton Header="Select/Move"
+                                               IconData="{pia:IconGeometry Icon=cursor_click}"
+                                               Command="{Binding SelectToolCommand}" />
+                    <ruiRibbon:RibbonButton Header="Point"
+                                               IconData="{pia:IconGeometry Icon=dot_outline}"
+                                               Command="{Binding SelectPointToolCommand}" />
+                    <ruiRibbon:RibbonButton Header="Line"
+                                               IconData="{pia:IconGeometry Icon=line_segment}"
+                                               Command="{Binding SelectLineToolCommand}" />
+                    <ruiRibbon:RibbonButton Header="Rectangle"
+                                               IconData="{pia:IconGeometry Icon=rectangle}"
+                                               Command="{Binding SelectRectangleToolCommand}" />
+                    <ruiRibbon:RibbonButton Header="Circle"
+                                               IconData="{pia:IconGeometry Icon=circle}"
+                                               Command="{Binding SelectCircleToolCommand}" />
+                </ruiRibbon:RibbonGroup>
+
+                <ruiRibbon:RibbonGroup Header="Canvas">
+                    <ruiRibbon:RibbonButton Header="Reset View"
+                                               IconData="{pia:IconGeometry Icon=arrows_clockwise}"
+                                               Command="{Binding ResetViewCommand}" />
+                    <ruiRibbon:RibbonButton Header="Clear"
+                                               IconData="{pia:IconGeometry Icon=trash}"
+                                               Command="{Binding ClearCanvasCommand}" />
+                </ruiRibbon:RibbonGroup>
+            </ruiRibbon:RibbonTab>
+
+            <ruiRibbon:RibbonTab Header="Help">
+                <ruiRibbon:RibbonGroup Header="Usage">
+                    <TextBlock Width="420"
+                               TextWrapping="Wrap"
+                               Foreground="{DynamicResource rUIForegroundSecondaryBrush}"
+                               Text="Use Select/Move to pick shapes, drag them, and use visible grab handles to resize. Draw tools create new shapes. Use middle mouse button to pan, mouse wheel to zoom, and right click for context actions." />
+                </ruiRibbon:RibbonGroup>
+            </ruiRibbon:RibbonTab>
+        </ruiRibbon:RibbonControl>
+
+        <Border Margin="16"
+                CornerRadius="10"
+                BorderBrush="{DynamicResource rUIBorderSubtleBrush}"
+                BorderThickness="1"
+                Background="{DynamicResource rUISurfaceBrush}">
+            <DockPanel LastChildFill="True">
+                <Border DockPanel.Dock="Bottom"
+                        Padding="10,8"
+                        BorderBrush="{DynamicResource rUIBorderSubtleBrush}"
+                        BorderThickness="0,1,0,0">
+                    <TextBlock Text="{Binding StatusText}"
+                               Foreground="{DynamicResource rUIForegroundSecondaryBrush}" />
+                </Border>
+
+                <ruiDrawing:DrawingCanvasControl Shapes="{Binding Shapes}"
+                                                    ActiveTool="{Binding ActiveTool}"
+                                                    Zoom="{Binding Zoom}"
+                                                    Pan="{Binding Pan}"
+                                                    CursorAvaloniaPosition="{Binding CursorAvaloniaPosition}"
+                                                    CursorCanvasPosition="{Binding CursorCanvasPosition}"
+                                                    CanvasBackground="{DynamicResource rUIBackgroundBrush}"
+                                                    ShapeStroke="{DynamicResource rUIAccentBrush}"
+                                                    PreviewStroke="{DynamicResource rUIWarningBrush}"
+                                                    HoverStroke="{DynamicResource rUIWarningBrush}" />
+            </DockPanel>
+        </Border>
+    </DockPanel>
+</UserControl>
