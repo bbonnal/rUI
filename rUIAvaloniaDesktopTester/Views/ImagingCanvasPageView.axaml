@@ -1,0 +1,151 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:rUIAvaloniaDesktopTester.ViewModels"
+             xmlns:ruiRibbon="using:rUI.Avalonia.Desktop.Controls.Ribbon"
+             xmlns:ruiDrawing="using:rUI.Drawing.Avalonia.Controls.Drawing"
+             xmlns:ruiProcessing="using:rUI.Avalonia.Desktop.Controls.Processing"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:pia="using:PhosphorIconsAvalonia.Markup"
+             mc:Ignorable="d"
+             d:DesignWidth="1400"
+             d:DesignHeight="860"
+             x:Class="rUIAvaloniaDesktopTester.Views.ImagingCanvasPageView"
+             x:DataType="vm:ImagingCanvasPageViewModel">
+
+    <DockPanel>
+        <ruiRibbon:RibbonControl DockPanel.Dock="Top">
+            <ruiRibbon:RibbonTab Header="Canvas">
+                <ruiRibbon:RibbonGroup Header="Tools">
+                    <ruiRibbon:RibbonButton Header="Select/Move"
+                                            IconData="{pia:IconGeometry Icon=cursor_click}"
+                                            Command="{Binding SelectToolCommand}" />
+                    <ruiRibbon:RibbonButton Header="Rectangle ROI"
+                                            IconData="{pia:IconGeometry Icon=rectangle}"
+                                            Command="{Binding SelectRectangleToolCommand}" />
+                    <ruiRibbon:RibbonButton Header="Line"
+                                            IconData="{pia:IconGeometry Icon=line_segment}"
+                                            Command="{Binding SelectLineToolCommand}" />
+                    <ruiRibbon:RibbonButton Header="Circle"
+                                            IconData="{pia:IconGeometry Icon=circle}"
+                                            Command="{Binding SelectCircleToolCommand}" />
+                </ruiRibbon:RibbonGroup>
+
+                <ruiRibbon:RibbonGroup Header="Scene">
+                    <ruiRibbon:RibbonButton Header="Load Background"
+                                            IconData="{pia:IconGeometry Icon=image}"
+                                            Command="{Binding LoadBackgroundImageCommand}" />
+                    <ruiRibbon:RibbonButton Header="Reset View"
+                                            IconData="{pia:IconGeometry Icon=arrows_clockwise}"
+                                            Command="{Binding ResetViewCommand}" />
+                    <ruiRibbon:RibbonButton Header="Clear All"
+                                            IconData="{pia:IconGeometry Icon=trash}"
+                                            Command="{Binding ClearCanvasCommand}" />
+                </ruiRibbon:RibbonGroup>
+            </ruiRibbon:RibbonTab>
+
+            <ruiRibbon:RibbonTab Header="Imaging Pipeline">
+                <ruiRibbon:RibbonGroup Header="Add Operation">
+                    <ruiRibbon:RibbonButton Header="Gaussian Blur"
+                                            IconData="{pia:IconGeometry Icon=circles_three_plus}"
+                                            Command="{Binding AddGaussianBlurOperationCommand}" />
+                    <ruiRibbon:RibbonButton Header="Work"
+                                            IconData="{pia:IconGeometry Icon=gear}"
+                                            Command="{Binding AddWorkOperationCommand}" />
+                    <ruiRibbon:RibbonButton Header="Extract Contour"
+                                            IconData="{pia:IconGeometry Icon=polygon}"
+                                            Command="{Binding AddExtractContourOperationCommand}" />
+                    <ruiRibbon:RibbonButton Header="Extract Circle"
+                                            IconData="{pia:IconGeometry Icon=circle}"
+                                            Command="{Binding AddExtractCircleOperationCommand}" />
+                </ruiRibbon:RibbonGroup>
+
+                <ruiRibbon:RibbonGroup Header="Execution">
+                    <ruiRibbon:RibbonButton Header="Run"
+                                            IconData="{pia:IconGeometry Icon=play}"
+                                            Command="{Binding RunPipelineCommand}" />
+                    <ruiRibbon:RibbonButton Header="Undo Last Op"
+                                            IconData="{pia:IconGeometry Icon=arrow_u_up_left}"
+                                            Command="{Binding RemoveLastOperationCommand}" />
+                    <ruiRibbon:RibbonButton Header="Clear Ops"
+                                            IconData="{pia:IconGeometry Icon=x}"
+                                            Command="{Binding ClearPipelineCommand}" />
+                    <ruiRibbon:RibbonButton Header="Clear Results"
+                                            IconData="{pia:IconGeometry Icon=trash}"
+                                            Command="{Binding ClearComputedResultsCommand}" />
+                </ruiRibbon:RibbonGroup>
+            </ruiRibbon:RibbonTab>
+        </ruiRibbon:RibbonControl>
+
+        <Border Margin="16"
+                CornerRadius="10"
+                BorderBrush="{DynamicResource rUIBorderSubtleBrush}"
+                BorderThickness="1"
+                Background="{DynamicResource rUISurfaceBrush}">
+            <DockPanel LastChildFill="True">
+                <Border DockPanel.Dock="Bottom"
+                        Padding="10,8"
+                        BorderBrush="{DynamicResource rUIBorderSubtleBrush}"
+                        BorderThickness="0,1,0,0">
+                    <TextBlock Text="{Binding StatusText}"
+                               Foreground="{DynamicResource rUIForegroundSecondaryBrush}" />
+                </Border>
+
+                <Grid ColumnDefinitions="3*,2*"
+                      ColumnSpacing="10">
+                    <ruiDrawing:DrawingCanvasControl Grid.Column="0"
+                                                     Shapes="{Binding Shapes}"
+                                                     ComputedShapeIds="{Binding ComputedShapeIds}"
+                                                     ActiveTool="{Binding ActiveTool}"
+                                                     Zoom="{Binding Zoom}"
+                                                     Pan="{Binding Pan}"
+                                                     CursorAvaloniaPosition="{Binding CursorAvaloniaPosition}"
+                                                     CursorCanvasPosition="{Binding CursorCanvasPosition}"
+                                                     DialogService="{Binding DialogService}"
+                                                     InfoBarService="{Binding InfoBarService}"
+                                                     CanvasBackground="{DynamicResource rUIBackgroundBrush}"
+                                                     ShapeStroke="{DynamicResource rUIAccentBrush}"
+                                                     ComputedStroke="{DynamicResource rUISuccessBrush}"
+                                                     PreviewStroke="{DynamicResource rUIWarningBrush}"
+                                                     HoverStroke="{DynamicResource rUIWarningBrush}" />
+
+                    <ScrollViewer Grid.Column="1"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  VerticalScrollBarVisibility="Auto">
+                        <StackPanel Spacing="10"
+                                    Margin="0,0,4,0">
+                            <TextBlock Text="Scene"
+                                       FontWeight="SemiBold"
+                                       FontSize="16" />
+                            <TextBlock Text="{Binding BackgroundImagePath, StringFormat=Background: {0}}"
+                                       TextWrapping="Wrap"
+                                       Foreground="{DynamicResource rUIForegroundSecondaryBrush}" />
+                            <TextBlock Text="{Binding PipelineSummary}"
+                                       TextWrapping="Wrap"
+                                       Foreground="{DynamicResource rUIForegroundSecondaryBrush}" />
+
+                            <ruiProcessing:ProcessControl Nodes="{Binding ProcessNodes}"
+                                                          Links="{Binding ProcessLinks}"
+                                                          SelectedNode="{Binding SelectedProcessNode}"
+                                                          SelectedFromOperation="{Binding SelectedFromOperation}"
+                                                          AvailableOutputPorts="{Binding AvailableOutputPorts}"
+                                                          SelectedFromPort="{Binding SelectedFromPort}"
+                                                          SelectedToOperation="{Binding SelectedToOperation}"
+                                                          AvailableInputPorts="{Binding AvailableInputPorts}"
+                                                          SelectedToPort="{Binding SelectedToPort}"
+                                                          SelectedLink="{Binding SelectedProcessLink}"
+                                                          ConnectPortsCommand="{Binding ConnectPortsCommand}"
+                                                          RemoveConnectionCommand="{Binding RemoveConnectionCommand}"
+                                                          RunProcessCommand="{Binding RunPipelineCommand}" />
+
+                            <ruiProcessing:ResourcePoolControl ResourceItems="{Binding Resources}"
+                                                               SelectedResource="{Binding SelectedResource}"
+                                                               ViewResourceCommand="{Binding ViewResourceCommand}"
+                                                               ClearResourcesCommand="{Binding ClearResourcesCommand}" />
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </DockPanel>
+        </Border>
+    </DockPanel>
+</UserControl>

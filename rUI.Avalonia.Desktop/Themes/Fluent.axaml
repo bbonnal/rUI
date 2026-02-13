@@ -24,6 +24,8 @@
         <ResourceInclude Source="avares://rUI.Avalonia.Desktop/Themes/Controls/SettingsCardExpander.axaml" />
         <ResourceInclude Source="avares://rUI.Avalonia.Desktop/Themes/Controls/Editors/BaseEditor.axaml" />
         <ResourceInclude Source="avares://rUI.Avalonia.Desktop/Themes/Controls/Editors/MultiLineTextEditor.axaml" />
+        <ResourceInclude Source="avares://rUI.Avalonia.Desktop/Themes/Controls/Processing/ProcessControl.axaml" />
+        <ResourceInclude Source="avares://rUI.Avalonia.Desktop/Themes/Controls/Processing/ResourcePoolControl.axaml" />
     </ResourceDictionary.MergedDictionaries>
 
 </ResourceDictionary>

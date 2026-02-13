@@ -78,6 +78,13 @@ public class MainWindowViewModel : ViewModelBase
             },
             new NavigationItemControl
             {
+                Header = "Imaging Canvas",
+                IconData = IconService.CreateGeometry(Icon.app_window, IconType.regular),
+                Factory = () => new ImagingCanvasPageView { DataContext = new ImagingCanvasPageViewModel(DialogService, InfoBarService) },
+                PageType = typeof(ImagingCanvasPageView)
+            },
+            new NavigationItemControl
+            {
                 Header = "Docking",
                 IconData = IconService.CreateGeometry(Icon.square_split_horizontal, IconType.regular),
                 Factory = () => new DockingTestingPageView { DataContext = new DockingTestingPageViewModel() },
