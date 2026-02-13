@@ -1,14 +1,18 @@
 using System.Collections.Specialized;
 using System.Globalization;
+using System.Windows.Input;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Data;
 using Avalonia.Input;
+using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using Flowxel.Core.Geometry.Primitives;
 using Flowxel.Core.Geometry.Shapes;
+using rUI.Avalonia.Desktop.Controls;
+using rUI.Avalonia.Desktop.Services;
 using rUI.Drawing.Core;
 using rUI.Drawing.Core.Shapes;
 using AvaloniaPoint = global::Avalonia.Point;
@@ -66,6 +70,9 @@ public class DrawingCanvasControl : Control
         AvaloniaProperty.Register<DrawingCanvasControl, AvaloniaVector>(
             nameof(Pan),
             defaultBindingMode: BindingMode.TwoWay);
+
+    public static readonly StyledProperty<IContentDialogService?> DialogServiceProperty =
+        AvaloniaProperty.Register<DrawingCanvasControl, IContentDialogService?>(nameof(DialogService));
 
     public static readonly StyledProperty<double> MinZoomProperty =
         AvaloniaProperty.Register<DrawingCanvasControl, double>(nameof(MinZoom), 0.1d);
@@ -153,6 +160,7 @@ public class DrawingCanvasControl : Control
         _contextMenu = new DrawingCanvasContextMenu();
         _contextMenu.DeleteShapeRequested += OnDeleteShapeRequested;
         _contextMenu.CenterViewRequested += OnCenterViewRequested;
+        _contextMenu.PropertiesRequested += OnPropertiesRequested;
         ContextMenu = _contextMenu;
         ContextRequested += OnContextRequested;
     }
@@ -179,6 +187,12 @@ public class DrawingCanvasControl : Control
     {
         get => GetValue(PanProperty);
         set => SetValue(PanProperty, value);
+    }
+
+    public IContentDialogService? DialogService
+    {
+        get => GetValue(DialogServiceProperty);
+        set => SetValue(DialogServiceProperty, value);
     }
 
     public double MinZoom
@@ -636,6 +650,226 @@ public class DrawingCanvasControl : Control
     private void OnCenterViewRequested(object? sender, EventArgs e)
         => CenterViewOnOrigin();
 
+    private async void OnPropertiesRequested(object? sender, EventArgs e)
+    {
+        if (_contextMenuTargetShape is null)
+            return;
+
+        await ShowShapePropertiesDialogAsync(_contextMenuTargetShape);
+    }
+
+    private async Task ShowShapePropertiesDialogAsync(Shape shape)
+    {
+        if (DialogService is null)
+            return;
+
+        var content = BuildPropertiesEditor(shape, out var applyChanges);
+
+        await DialogService.ShowAsync(dialog =>
+        {
+            dialog.Title = $"{shape.Type} properties";
+            dialog.Content = content;
+            dialog.PrimaryButtonText = "Apply";
+            dialog.CloseButtonText = "Cancel";
+            dialog.DefaultButton = DefaultButton.Primary;
+            dialog.PrimaryButtonCommand = new ActionCommand(() =>
+            {
+                applyChanges();
+                _imageCache.Clear();
+                InvalidateVisual();
+            });
+        });
+    }
+
+    private Control BuildPropertiesEditor(Shape shape, out Action apply)
+    {
+        var container = new StackPanel
+        {
+            Spacing = 8,
+            MinWidth = 420
+        };
+
+        var xBox = AddTextEditor(container, "Position X", shape.Pose.Position.X.ToString("0.###", CultureInfo.InvariantCulture));
+        var yBox = AddTextEditor(container, "Position Y", shape.Pose.Position.Y.ToString("0.###", CultureInfo.InvariantCulture));
+        var oxBox = AddTextEditor(container, "Orientation X", shape.Pose.Orientation.X.ToString("0.###", CultureInfo.InvariantCulture));
+        var oyBox = AddTextEditor(container, "Orientation Y", shape.Pose.Orientation.Y.ToString("0.###", CultureInfo.InvariantCulture));
+
+        Action specificApply = () => { };
+
+        switch (shape)
+        {
+            case Line line:
+            {
+                var lengthBox = AddTextEditor(container, "Length", line.Length.ToString("0.###", CultureInfo.InvariantCulture));
+                specificApply = () => line.Length = Math.Max(ParseOrDefault(lengthBox, line.Length), MinShapeSize);
+                break;
+            }
+            case FlowRectangle rectangle:
+            {
+                var widthBox = AddTextEditor(container, "Width", rectangle.Width.ToString("0.###", CultureInfo.InvariantCulture));
+                var heightBox = AddTextEditor(container, "Height", rectangle.Height.ToString("0.###", CultureInfo.InvariantCulture));
+                specificApply = () =>
+                {
+                    rectangle.Width = Math.Max(ParseOrDefault(widthBox, rectangle.Width), MinShapeSize);
+                    rectangle.Height = Math.Max(ParseOrDefault(heightBox, rectangle.Height), MinShapeSize);
+                };
+                break;
+            }
+            case Circle circle:
+            {
+                var radiusBox = AddTextEditor(container, "Radius", circle.Radius.ToString("0.###", CultureInfo.InvariantCulture));
+                specificApply = () => circle.Radius = Math.Max(ParseOrDefault(radiusBox, circle.Radius), MinShapeSize);
+                break;
+            }
+            case ImageShape image:
+            {
+                var widthBox = AddTextEditor(container, "Width", image.Width.ToString("0.###", CultureInfo.InvariantCulture));
+                var heightBox = AddTextEditor(container, "Height", image.Height.ToString("0.###", CultureInfo.InvariantCulture));
+                var pathBox = AddTextEditor(container, "Image path", image.SourcePath);
+                specificApply = () =>
+                {
+                    image.Width = Math.Max(ParseOrDefault(widthBox, image.Width), MinShapeSize);
+                    image.Height = Math.Max(ParseOrDefault(heightBox, image.Height), MinShapeSize);
+                    image.SourcePath = pathBox.Text?.Trim() ?? string.Empty;
+                };
+                break;
+            }
+            case TextBoxShape textBox:
+            {
+                var widthBox = AddTextEditor(container, "Width", textBox.Width.ToString("0.###", CultureInfo.InvariantCulture));
+                var heightBox = AddTextEditor(container, "Height", textBox.Height.ToString("0.###", CultureInfo.InvariantCulture));
+                var textValueBox = AddTextEditor(container, "Text", textBox.Text);
+                var fontSizeBox = AddTextEditor(container, "Font size", textBox.FontSize.ToString("0.###", CultureInfo.InvariantCulture));
+                specificApply = () =>
+                {
+                    textBox.Width = Math.Max(ParseOrDefault(widthBox, textBox.Width), MinShapeSize);
+                    textBox.Height = Math.Max(ParseOrDefault(heightBox, textBox.Height), MinShapeSize);
+                    textBox.Text = textValueBox.Text ?? string.Empty;
+                    textBox.FontSize = Math.Max(ParseOrDefault(fontSizeBox, textBox.FontSize), 1);
+                };
+                break;
+            }
+            case ArrowShape arrow:
+            {
+                var lengthBox = AddTextEditor(container, "Length", arrow.Length.ToString("0.###", CultureInfo.InvariantCulture));
+                var headLengthBox = AddTextEditor(container, "Head length", arrow.HeadLength.ToString("0.###", CultureInfo.InvariantCulture));
+                specificApply = () =>
+                {
+                    arrow.Length = Math.Max(ParseOrDefault(lengthBox, arrow.Length), MinShapeSize);
+                    arrow.HeadLength = Math.Max(ParseOrDefault(headLengthBox, arrow.HeadLength), MinShapeSize);
+                };
+                break;
+            }
+            case CenterlineRectangleShape centerlineRectangle:
+            {
+                var lengthBox = AddTextEditor(container, "Length", centerlineRectangle.Length.ToString("0.###", CultureInfo.InvariantCulture));
+                var widthBox = AddTextEditor(container, "Width", centerlineRectangle.Width.ToString("0.###", CultureInfo.InvariantCulture));
+                specificApply = () =>
+                {
+                    centerlineRectangle.Length = Math.Max(ParseOrDefault(lengthBox, centerlineRectangle.Length), MinShapeSize);
+                    centerlineRectangle.Width = Math.Max(ParseOrDefault(widthBox, centerlineRectangle.Width), MinShapeSize);
+                };
+                break;
+            }
+            case ReferentialShape referential:
+            {
+                var xLengthBox = AddTextEditor(container, "X axis length", referential.XAxisLength.ToString("0.###", CultureInfo.InvariantCulture));
+                var yLengthBox = AddTextEditor(container, "Y axis length", referential.YAxisLength.ToString("0.###", CultureInfo.InvariantCulture));
+                specificApply = () =>
+                {
+                    referential.XAxisLength = Math.Max(ParseOrDefault(xLengthBox, referential.XAxisLength), MinShapeSize);
+                    referential.YAxisLength = Math.Max(ParseOrDefault(yLengthBox, referential.YAxisLength), MinShapeSize);
+                };
+                break;
+            }
+            case DimensionShape dimension:
+            {
+                var lengthBox = AddTextEditor(container, "Length", dimension.Length.ToString("0.###", CultureInfo.InvariantCulture));
+                var offsetBox = AddTextEditor(container, "Offset", dimension.Offset.ToString("0.###", CultureInfo.InvariantCulture));
+                var textBox = AddTextEditor(container, "Text", dimension.Text);
+                specificApply = () =>
+                {
+                    dimension.Length = Math.Max(ParseOrDefault(lengthBox, dimension.Length), MinShapeSize);
+                    dimension.Offset = ParseOrDefault(offsetBox, dimension.Offset);
+                    dimension.Text = textBox.Text ?? string.Empty;
+                };
+                break;
+            }
+            case AngleDimensionShape angleDimension:
+            {
+                var radiusBox = AddTextEditor(container, "Radius", angleDimension.Radius.ToString("0.###", CultureInfo.InvariantCulture));
+                var startDegBox = AddTextEditor(container, "Start angle (deg)", (angleDimension.StartAngleRad * 180 / Math.PI).ToString("0.###", CultureInfo.InvariantCulture));
+                var sweepDegBox = AddTextEditor(container, "Sweep angle (deg)", (angleDimension.SweepAngleRad * 180 / Math.PI).ToString("0.###", CultureInfo.InvariantCulture));
+                var textBox = AddTextEditor(container, "Text", angleDimension.Text);
+                specificApply = () =>
+                {
+                    angleDimension.Radius = Math.Max(ParseOrDefault(radiusBox, angleDimension.Radius), MinShapeSize);
+                    angleDimension.StartAngleRad = ParseOrDefault(startDegBox, angleDimension.StartAngleRad * 180 / Math.PI) * Math.PI / 180;
+                    angleDimension.SweepAngleRad = ParseOrDefault(sweepDegBox, angleDimension.SweepAngleRad * 180 / Math.PI) * Math.PI / 180;
+                    angleDimension.Text = textBox.Text ?? string.Empty;
+                };
+                break;
+            }
+        }
+
+        apply = () =>
+        {
+            var x = ParseOrDefault(xBox, shape.Pose.Position.X);
+            var y = ParseOrDefault(yBox, shape.Pose.Position.Y);
+            var ox = ParseOrDefault(oxBox, shape.Pose.Orientation.X);
+            var oy = ParseOrDefault(oyBox, shape.Pose.Orientation.Y);
+
+            var orientation = new FlowVector(ox, oy);
+            if (orientation.M <= 0.000001)
+                orientation = shape.Pose.Orientation;
+
+            shape.Pose = CreatePose(x, y, orientation);
+            specificApply();
+        };
+
+        return new ScrollViewer
+        {
+            Content = container,
+            MaxHeight = 520
+        };
+    }
+
+    private static TextBox AddTextEditor(Panel parent, string label, string value)
+    {
+        var row = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 12
+        };
+
+        var labelControl = new TextBlock
+        {
+            Text = label,
+            Width = 160,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+
+        var editor = new TextBox
+        {
+            Text = value,
+            MinWidth = 220,
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        };
+
+        row.Children.Add(labelControl);
+        row.Children.Add(editor);
+        parent.Children.Add(row);
+        return editor;
+    }
+
+    private static double ParseOrDefault(TextBox box, double fallback)
+    {
+        if (double.TryParse(box.Text, NumberStyles.Float | NumberStyles.AllowThousands, CultureInfo.InvariantCulture, out var parsed))
+            return parsed;
+
+        return fallback;
+    }
+
     private void OnContextRequested(object? sender, ContextRequestedEventArgs e)
     {
         if (!e.TryGetPosition(this, out var position))
@@ -769,7 +1003,7 @@ public class DrawingCanvasControl : Control
                 break;
             }
             case ImageShape image:
-                DrawImageShape(context, image, pen, strokeBrush);
+                DrawImageShape(context, image, pen);
                 break;
             case TextBoxShape textBox:
                 DrawTextBoxShape(context, textBox, pen, strokeBrush);
@@ -797,20 +1031,17 @@ public class DrawingCanvasControl : Control
         }
     }
 
-    private void DrawImageShape(DrawingContext context, ImageShape image, Pen pen, IBrush strokeBrush)
+    private void DrawImageShape(DrawingContext context, ImageShape image, Pen pen)
     {
         DrawClosedPolyline(context, pen, image.TopLeft, image.TopRight, image.BottomRight, image.BottomLeft, image.TopLeft);
 
-        if (string.IsNullOrWhiteSpace(image.SourcePath))
+        var bitmap = TryGetBitmap(image.SourcePath);
+        if (bitmap is null)
         {
             context.DrawLine(pen, WorldToScreen(image.TopLeft), WorldToScreen(image.BottomRight));
             context.DrawLine(pen, WorldToScreen(image.TopRight), WorldToScreen(image.BottomLeft));
             return;
         }
-
-        var bitmap = TryGetBitmap(image.SourcePath);
-        if (bitmap is null)
-            return;
 
         var topLeft = WorldToScreen(image.TopLeft);
         var bottomRight = WorldToScreen(image.BottomRight);
@@ -956,8 +1187,11 @@ public class DrawingCanvasControl : Control
         }
     }
 
-    private Bitmap? TryGetBitmap(string path)
+    private Bitmap? TryGetBitmap(string? path)
     {
+        if (string.IsNullOrWhiteSpace(path))
+            return null;
+
         if (_imageCache.TryGetValue(path, out var cached))
             return cached;
 
@@ -979,4 +1213,13 @@ public class DrawingCanvasControl : Control
 
     private FlowVector ScreenToWorld(AvaloniaPoint screen)
         => new((screen.X - Pan.X) / Zoom, (screen.Y - Pan.Y) / Zoom);
+
+    private sealed class ActionCommand(Action execute) : ICommand
+    {
+        public event EventHandler? CanExecuteChanged;
+
+        public bool CanExecute(object? parameter) => true;
+
+        public void Execute(object? parameter) => execute();
+    }
 }

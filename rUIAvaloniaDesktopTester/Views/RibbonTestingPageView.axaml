@@ -97,6 +97,7 @@
                                                 Pan="{Binding Pan}"
                                                 CursorAvaloniaPosition="{Binding CursorAvaloniaPosition}"
                                                 CursorCanvasPosition="{Binding CursorCanvasPosition}"
+                                                DialogService="{Binding DialogService}"
                                                 CanvasBackground="{DynamicResource rUIBackgroundBrush}"
                                                 ShapeStroke="{DynamicResource rUIAccentBrush}"
                                                 PreviewStroke="{DynamicResource rUIWarningBrush}"

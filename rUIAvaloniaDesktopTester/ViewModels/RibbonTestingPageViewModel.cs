@@ -2,15 +2,18 @@ using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using rUI.Drawing.Core;
 using Flowxel.Core.Geometry.Shapes;
+using rUI.Avalonia.Desktop.Services;
+using rUI.Drawing.Core;
 
 namespace rUIAvaloniaDesktopTester.ViewModels;
 
 public partial class RibbonTestingPageViewModel : ViewModelBase
 {
-    public RibbonTestingPageViewModel()
+    public RibbonTestingPageViewModel(IContentDialogService dialogService)
     {
+        DialogService = dialogService;
+
         SelectToolCommand = new RelayCommand(() => ActiveTool = DrawingTool.Select);
         SelectPointToolCommand = new RelayCommand(() => ActiveTool = DrawingTool.Point);
         SelectLineToolCommand = new RelayCommand(() => ActiveTool = DrawingTool.Line);
@@ -28,6 +31,8 @@ public partial class RibbonTestingPageViewModel : ViewModelBase
         ResetViewCommand = new RelayCommand(ResetView);
         Shapes.CollectionChanged += OnShapesCollectionChanged;
     }
+
+    public IContentDialogService DialogService { get; }
 
     public ObservableCollection<Shape> Shapes { get; } = [];
 
