@@ -9,8 +9,8 @@
              mc:Ignorable="d"
              d:DesignWidth="1200"
              d:DesignHeight="760"
-             x:Class="rUIAvaloniaDesktopTester.Views.RibbonTestingPageView"
-             x:DataType="vm:RibbonTestingPageViewModel">
+             x:Class="rUIAvaloniaDesktopTester.Views.RibbonCanvasTestingPageView"
+             x:DataType="vm:RibbonCanvasTestingPageViewModel">
 
     <DockPanel>
         <ruiRibbon:RibbonControl DockPanel.Dock="Top">
@@ -58,6 +58,10 @@
                 </ruiRibbon:RibbonGroup>
 
                 <ruiRibbon:RibbonGroup Header="Canvas">
+                    <ruiRibbon:RibbonButton Header="Save Scene"
+                                            Command="{Binding SaveSceneCommand}" />
+                    <ruiRibbon:RibbonButton Header="Load Scene"
+                                            Command="{Binding LoadSceneCommand}" />
                     <ruiRibbon:RibbonButton Header="Reset View"
                                             IconData="{pia:IconGeometry Icon=arrows_clockwise}"
                                             Command="{Binding ResetViewCommand}" />
@@ -69,10 +73,10 @@
 
             <ruiRibbon:RibbonTab Header="Help">
                 <ruiRibbon:RibbonGroup Header="Usage">
-                    <TextBlock Width="520"
+                    <TextBlock Width="560"
                                TextWrapping="Wrap"
                                Foreground="{DynamicResource rUIForegroundSecondaryBrush}"
-                               Text="Select/Move: select, drag, and resize with handles. Draw tools create elements on drag. Middle mouse: pan. Wheel: zoom. Right click: context menu (delete shape or center view)." />
+                               Text="Select/Move: select, drag, and resize with handles. Draw tools create elements on drag. Middle mouse: pan. Wheel: zoom. Right click: context menu (delete shape or center view). Use Save/Load Scene to test serialization roundtrip." />
                 </ruiRibbon:RibbonGroup>
             </ruiRibbon:RibbonTab>
         </ruiRibbon:RibbonControl>

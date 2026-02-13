@@ -38,6 +38,10 @@
                     <ruiRibbon:RibbonButton Header="Run"
                                             IconData="{pia:IconGeometry Icon=play}"
                                             Command="{Binding RunPipelineCommand}" />
+                    <ruiRibbon:RibbonButton Header="Save Scene"
+                                            Command="{Binding SaveSceneCommand}" />
+                    <ruiRibbon:RibbonButton Header="Load Scene"
+                                            Command="{Binding LoadSceneCommand}" />
                     <ruiRibbon:RibbonButton Header="Clear Results"
                                             IconData="{pia:IconGeometry Icon=arrows_counter_clockwise}"
                                             Command="{Binding ClearComputedResultsCommand}" />

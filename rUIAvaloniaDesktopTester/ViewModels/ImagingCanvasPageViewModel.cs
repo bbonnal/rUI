@@ -21,6 +21,7 @@ using rUI.Avalonia.Desktop.Controls;
 using rUI.Avalonia.Desktop.Controls.Processing;
 using rUI.Avalonia.Desktop.Services;
 using rUI.Drawing.Core;
+using rUI.Drawing.Core.Scene;
 using rUI.Drawing.Core.Shapes;
 using Shape = Flowxel.Core.Geometry.Shapes.Shape;
 using FlowLine = Flowxel.Core.Geometry.Shapes.Line;
@@ -32,6 +33,7 @@ public partial class ImagingCanvasPageViewModel : ViewModelBase
 {
     private readonly IContentDialogService _dialogService;
     private readonly IInfoBarService _infoBarService;
+    private readonly ISceneSerializer _sceneSerializer = new JsonSceneSerializer();
 
     private readonly Dictionary<string, string> _loadPathByNodeId = new(StringComparer.Ordinal);
     private readonly Dictionary<string, int> _gaussianKernelSizeByNodeId = new(StringComparer.Ordinal);
@@ -65,6 +67,9 @@ public partial class ImagingCanvasPageViewModel : ViewModelBase
 
         DrawRoiForSelectedOperationCommand = new RelayCommand(BeginRoiDrawingForSelectedOperation);
         RemoveRoiForSelectedOperationCommand = new RelayCommand(RemoveRoiForSelectedOperation);
+
+        SaveSceneCommand = new AsyncRelayCommand(SaveSceneAsync);
+        LoadSceneCommand = new AsyncRelayCommand(LoadSceneAsync);
 
         ClearCanvasCommand = new RelayCommand(ClearCanvas);
         ResetViewCommand = new RelayCommand(ResetView);
@@ -177,6 +182,9 @@ public partial class ImagingCanvasPageViewModel : ViewModelBase
 
     public IRelayCommand DrawRoiForSelectedOperationCommand { get; }
     public IRelayCommand RemoveRoiForSelectedOperationCommand { get; }
+
+    public IAsyncRelayCommand SaveSceneCommand { get; }
+    public IAsyncRelayCommand LoadSceneCommand { get; }
 
     public IRelayCommand ClearCanvasCommand { get; }
     public IRelayCommand ResetViewCommand { get; }
@@ -711,6 +719,122 @@ public partial class ImagingCanvasPageViewModel : ViewModelBase
         Resources.Clear();
         SelectedResource = null;
         OnPropertyChanged(nameof(StatusText));
+    }
+
+    private async Task SaveSceneAsync()
+    {
+        var path = await PromptScenePathAsync("Save scene", "Save", "scene.json");
+        if (string.IsNullOrWhiteSpace(path))
+            return;
+
+        try
+        {
+            var computed = ComputedShapeIds.ToHashSet(StringComparer.Ordinal);
+            var scene = SceneDocumentMapper.ToDocument(Shapes, computed);
+            var json = _sceneSerializer.Serialize(scene);
+
+            var directory = Path.GetDirectoryName(path);
+            if (!string.IsNullOrWhiteSpace(directory))
+                Directory.CreateDirectory(directory);
+
+            await File.WriteAllTextAsync(path, json);
+
+            await _infoBarService.ShowAsync(infoBar =>
+            {
+                infoBar.Severity = InfoBarSeverity.Success;
+                infoBar.Title = "Scene saved";
+                infoBar.Message = path;
+            });
+        }
+        catch (Exception ex)
+        {
+            await _infoBarService.ShowAsync(infoBar =>
+            {
+                infoBar.Severity = InfoBarSeverity.Error;
+                infoBar.Title = "Scene save failed";
+                infoBar.Message = ex.Message;
+            });
+        }
+    }
+
+    private async Task LoadSceneAsync()
+    {
+        var path = await PromptScenePathAsync("Load scene", "Load", "scene.json");
+        if (string.IsNullOrWhiteSpace(path))
+            return;
+
+        try
+        {
+            if (!File.Exists(path))
+                throw new FileNotFoundException("Scene file not found.", path);
+
+            var json = await File.ReadAllTextAsync(path);
+            var scene = _sceneSerializer.Deserialize(json);
+            var loaded = SceneDocumentMapper.FromDocument(scene);
+
+            Shapes.Clear();
+            ComputedShapeIds.Clear();
+
+            foreach (var shape in loaded.Shapes)
+                Shapes.Add(shape);
+
+            foreach (var id in loaded.ComputedShapeIds)
+                ComputedShapeIds.Add(id);
+
+            await _infoBarService.ShowAsync(infoBar =>
+            {
+                infoBar.Severity = InfoBarSeverity.Success;
+                infoBar.Title = "Scene loaded";
+                infoBar.Message = $"{path} ({loaded.Shapes.Count} shape(s))";
+            });
+        }
+        catch (Exception ex)
+        {
+            await _infoBarService.ShowAsync(infoBar =>
+            {
+                infoBar.Severity = InfoBarSeverity.Error;
+                infoBar.Title = "Scene load failed";
+                infoBar.Message = ex.Message;
+            });
+        }
+    }
+
+    private async Task<string?> PromptScenePathAsync(string title, string primaryButtonText, string defaultFileName)
+    {
+        var pathBox = new TextBox
+        {
+            Width = 560,
+            Watermark = "Absolute path to .json scene file"
+        };
+
+        var defaultPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), defaultFileName);
+        pathBox.Text = defaultPath;
+
+        var result = await _dialogService.ShowAsync(dialog =>
+        {
+            dialog.Title = title;
+            dialog.Content = new StackPanel
+            {
+                Spacing = 10,
+                Children =
+                {
+                    new TextBlock { Text = "Scene file path:" },
+                    pathBox
+                }
+            };
+            dialog.PrimaryButtonText = primaryButtonText;
+            dialog.CloseButtonText = "Cancel";
+            dialog.DefaultButton = DefaultButton.Primary;
+        });
+
+        if (result != DialogResult.Primary)
+            return null;
+
+        var path = pathBox.Text?.Trim();
+        if (string.IsNullOrWhiteSpace(path))
+            return null;
+
+        return path;
     }
 
     private async Task<bool> EnsureOpenCvRuntimeAvailableAsync()

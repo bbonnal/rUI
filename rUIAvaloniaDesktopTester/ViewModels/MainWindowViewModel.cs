@@ -71,10 +71,10 @@ public class MainWindowViewModel : ViewModelBase
             },
             new NavigationItemControl
             {
-                Header = "Ribbon",
+                Header = "Ribbon Canvas",
                 IconData = IconService.CreateGeometry(Icon.app_window, IconType.regular),
-                Factory = () => new RibbonTestingPageView { DataContext = new RibbonTestingPageViewModel(DialogService, InfoBarService) },
-                PageType = typeof(RibbonTestingPageView)
+                Factory = () => new RibbonCanvasTestingPageView { DataContext = new RibbonCanvasTestingPageViewModel(DialogService, InfoBarService) },
+                PageType = typeof(RibbonCanvasTestingPageView)
             },
             new NavigationItemControl
             {
