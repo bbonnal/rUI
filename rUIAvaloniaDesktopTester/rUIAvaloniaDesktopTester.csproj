@@ -9,6 +9,8 @@
 
   <ItemGroup>
     <AvaloniaResource Include="Assets\**" />
+    <EmbeddedResource Include="Resources\Translation\*.json"
+                      LogicalName="rUIAvaloniaDesktopTester.Resources.Translation.%(Filename)%(Extension)" />
   </ItemGroup>
 
   <ItemGroup>

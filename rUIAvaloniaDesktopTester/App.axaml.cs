@@ -4,6 +4,7 @@ using Avalonia.Data.Core;
 using Avalonia.Data.Core.Plugins;
 using System.Linq;
 using Avalonia.Markup.Xaml;
+using rUI.Avalonia.Desktop.Translation;
 using rUIAvaloniaDesktopTester.ViewModels;
 using rUIAvaloniaDesktopTester.Views;
 using LiveChartsCore;
@@ -29,6 +30,7 @@ public partial class App : Application
         var servicesCollection = new ServiceCollection();
         servicesCollection.AddCommonServices();
         var services = new DefaultServiceProviderFactory().CreateServiceProvider(servicesCollection);
+        TranslationBindingSource.Instance.Initialize(services.GetRequiredService<ITranslationService>());
         ViewLocator.Configure(ViewMappings.Create());
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
