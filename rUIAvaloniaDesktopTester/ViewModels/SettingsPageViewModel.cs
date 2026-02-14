@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using rUI.Avalonia.Desktop.Services.Logging;
+using Microsoft.Extensions.Logging;
 using rUI.Avalonia.Desktop.Translation;
 
 namespace rUIAvaloniaDesktopTester.ViewModels;
@@ -9,12 +9,12 @@ namespace rUIAvaloniaDesktopTester.ViewModels;
 public class SettingsPageViewModel : ViewModelBase
 {
     private readonly ITranslationService _translations;
-    private readonly IRuiLogger<SettingsPageViewModel> _logger;
+    private readonly ILogger<SettingsPageViewModel> _logger;
     private int _pendingChanges;
 
     public SettingsPageViewModel(
         ITranslationService translations,
-        IRuiLogger<SettingsPageViewModel> logger)
+        ILogger<SettingsPageViewModel> logger)
     {
         _translations = translations;
         _logger = logger;
@@ -63,7 +63,7 @@ public class SettingsPageViewModel : ViewModelBase
             ["Action"] = "CardClicked"
         });
 
-        _logger.Information("Settings card clicked. Section={Section} PendingChanges={PendingChanges}", parameter, _pendingChanges);
+        _logger.LogInformation("Settings card clicked. Section={Section} PendingChanges={PendingChanges}", parameter, _pendingChanges);
     }
 
     private void SetCulture(string cultureName)
@@ -73,7 +73,7 @@ public class SettingsPageViewModel : ViewModelBase
         RefreshTranslations();
         SaveStatus = _translations.TranslateCount("settings.saveStatus", _pendingChanges);
 
-        _logger.Information("UI culture changed to {Culture}", culture.Name);
+        _logger.LogInformation("UI culture changed to {Culture}", culture.Name);
         CardClicked("Language");
     }
 

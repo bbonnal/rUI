@@ -5,8 +5,8 @@ using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Styling;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.Logging;
 using rUI.Avalonia.Desktop;
-using rUI.Avalonia.Desktop.Services.Logging;
 using rUI.Avalonia.Desktop.Translation;
 using rUIAppModelTester.AppModel;
 using rUIAppModelTester.Services;
@@ -16,7 +16,7 @@ namespace rUIAppModelTester.ViewModels;
 public class SettingsPageViewModel : ViewModelBase, INavigationViewModel
 {
     private readonly ITranslationService _translations;
-    private readonly IRuiLogger<SettingsPageViewModel> _logger;
+    private readonly ILogger<SettingsPageViewModel> _logger;
     private readonly IAppSettingsRuntime _runtime;
     private string _selectedLanguageCode = "en";
     private string _selectedThemeMode = AppThemeModes.System;
@@ -25,7 +25,7 @@ public class SettingsPageViewModel : ViewModelBase, INavigationViewModel
 
     public SettingsPageViewModel(
         ITranslationService translations,
-        IRuiLogger<SettingsPageViewModel> logger,
+        ILogger<SettingsPageViewModel> logger,
         IAppSettingsRuntime runtime)
     {
         _translations = translations;
@@ -120,7 +120,7 @@ public class SettingsPageViewModel : ViewModelBase, INavigationViewModel
         RefreshTranslations();
         RefreshStatus();
 
-        _logger.Information("Language preview set to {Culture}", culture.Name);
+        _logger.LogInformation("Language preview set to {Culture}", culture.Name);
     }
 
     private void SetTheme(string themeMode)
@@ -136,7 +136,7 @@ public class SettingsPageViewModel : ViewModelBase, INavigationViewModel
         RefreshTranslations();
         RefreshStatus();
 
-        _logger.Information("Theme preview set to {Theme}", _selectedThemeMode);
+        _logger.LogInformation("Theme preview set to {Theme}", _selectedThemeMode);
     }
 
     private async Task SaveSettingsAsync()
@@ -152,7 +152,7 @@ public class SettingsPageViewModel : ViewModelBase, INavigationViewModel
         LastAction = "Settings saved to local persistence and applied.";
         RefreshStatus();
 
-        _logger.Information("Settings saved. Language={Language} Theme={Theme}", settings.LanguageCode, settings.ThemeMode);
+        _logger.LogInformation("Settings saved. Language={Language} Theme={Theme}", settings.LanguageCode, settings.ThemeMode);
     }
 
     private async Task ResetDefaultsAsync()
@@ -162,7 +162,7 @@ public class SettingsPageViewModel : ViewModelBase, INavigationViewModel
         LastAction = "Defaults restored and saved.";
         RefreshStatus();
 
-        _logger.Information("Settings reset to defaults.");
+        _logger.LogInformation("Settings reset to defaults.");
     }
 
     private async Task DeletePersistedSettingsAsync()
@@ -172,7 +172,7 @@ public class SettingsPageViewModel : ViewModelBase, INavigationViewModel
         LastAction = "Persisted settings deleted. Runtime set to defaults.";
         RefreshStatus();
 
-        _logger.Information("Persisted settings deleted.");
+        _logger.LogInformation("Persisted settings deleted.");
     }
 
     private void ApplySettings(AppModelTesterSettings settings)

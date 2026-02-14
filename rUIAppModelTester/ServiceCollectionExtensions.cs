@@ -10,7 +10,6 @@ using rUI.AppModel.Serialization;
 using rUI.AppModel.Settings;
 using rUI.Avalonia.Desktop;
 using rUI.Avalonia.Desktop.Services;
-using rUI.Avalonia.Desktop.Services.Logging;
 using rUI.Avalonia.Desktop.Services.Shortcuts;
 using rUI.Avalonia.Desktop.Translation;
 using rUI.AppModel.Storage;
@@ -79,8 +78,6 @@ public static class ServiceCollectionExtensions
     {
         _ = services.AddSingleton<ILoggerFactory>(NullLoggerFactory.Instance);
         _ = services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
-        _ = services.AddSingleton<IRuiLoggerFactory, RuiLoggerFactory>();
-        _ = services.AddSingleton(typeof(IRuiLogger<>), typeof(RuiLogger<>));
     }
 
     private static void ConfigureTranslation(IServiceCollection services)

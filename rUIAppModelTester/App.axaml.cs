@@ -9,6 +9,7 @@ using rUI.Avalonia.Desktop.Translation;
 using rUIAppModelTester.ViewModels;
 using rUIAppModelTester.Views;
 using Microsoft.Extensions.DependencyInjection;
+using rUI.Avalonia.Desktop.Services;
 
 namespace rUIAppModelTester;
 
@@ -39,8 +40,17 @@ public partial class App : Application
             var mainWindow = services.GetRequiredService<MainWindow>();
             var vm = services.GetRequiredService<MainWindowViewModel>();
             mainWindow.DataContext = vm;
-
+            
+            // Register hosts directly via services
+            // This is mandatory for theses services to work above the main window
+            services.GetRequiredService<IContentDialogService>().RegisterHost(mainWindow.HostDialog);
+            services.GetRequiredService<IOverlayService>().RegisterHost(mainWindow.HostOverlay);
+            services.GetRequiredService<IInfoBarService>().RegisterHost(mainWindow.HostInfoBar);
+            
             desktop.MainWindow = mainWindow;
+
+            // Initialize app-level state (including persisted settings) at startup.
+            mainWindow.Opened += async (_, _) => await vm.InitializeAsync();
         }
 
         base.OnFrameworkInitializationCompleted();

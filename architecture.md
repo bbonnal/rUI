@@ -99,18 +99,16 @@ Why:
 - Clear boundary between service API and visual host.
 - Service usage stays simple in ViewModels.
 
-## 6) Cross-Cutting Infrastructure via Abstractions
+## 6) Cross-Cutting Infrastructure via Framework Abstractions
 
 Decision:
-- Keep cross-cutting features (logging, localization) behind library-level interfaces.
-- Register concrete implementations in the host app composition root.
+- Use `Microsoft.Extensions.Logging` directly for logging and keep localization behind library-level interfaces.
+- Register providers and runtime policy in the host app composition root.
 
 Implementation:
-- Logging contracts/adapters:
-  - `rUI.Avalonia.Desktop/Services/Logging/IRuiLogger.cs`
-  - `rUI.Avalonia.Desktop/Services/Logging/IRuiLoggerFactory.cs`
-  - `rUI.Avalonia.Desktop/Services/Logging/RuiLogger.cs`
-  - `rUI.Avalonia.Desktop/Services/Logging/RuiLoggerFactory.cs`
+- Logging strategy:
+  - `Microsoft.Extensions.Logging.ILogger<TCategoryName>` (injected directly)
+  - `Microsoft.Extensions.Logging.ILoggerFactory` (host registration)
 - Translation strategy:
   - `rUI.Avalonia.Desktop/Translation/ITranslationService.cs`
   - `rUI.Avalonia.Desktop/Translation/TranslationService.cs`

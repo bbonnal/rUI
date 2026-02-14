@@ -15,7 +15,6 @@ public static class ViewMappings
     {
         return new Dictionary<Type, Func<Control>>
         {
-            [typeof(GenerateKeysPageViewModel)] = static () => new GenerateKeysPageView(),
             [typeof(ContentDialogTestingPageViewModel)] = static () => new ContentDialogTestingPageView(),
             [typeof(OverlayTestingPageViewModel)] = static () => new OverlayTestingPageView(),
             [typeof(InfoBarTestingPageViewModel)] = static () => new InfoBarTestingPageView(),

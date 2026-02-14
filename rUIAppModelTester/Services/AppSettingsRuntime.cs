@@ -5,9 +5,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Styling;
+using Microsoft.Extensions.Logging;
 using rUI.AppModel.Settings;
 using rUI.AppModel.Json.Storage;
-using rUI.Avalonia.Desktop.Services.Logging;
 using rUI.Avalonia.Desktop.Translation;
 using rUIAppModelTester.AppModel;
 
@@ -17,12 +17,12 @@ public sealed class AppSettingsRuntime : IAppSettingsRuntime
 {
     private readonly ISettingsService<AppModelTesterSettings> _settingsService;
     private readonly ITranslationService _translations;
-    private readonly IRuiLogger<AppSettingsRuntime> _logger;
+    private readonly ILogger<AppSettingsRuntime> _logger;
 
     public AppSettingsRuntime(
         ISettingsService<AppModelTesterSettings> settingsService,
         ITranslationService translations,
-        IRuiLogger<AppSettingsRuntime> logger,
+        ILogger<AppSettingsRuntime> logger,
         FileDocumentStoreOptions storeOptions)
     {
         _settingsService = settingsService;
@@ -53,7 +53,7 @@ public sealed class AppSettingsRuntime : IAppSettingsRuntime
         await ReloadCoreAsync(cancellationToken);
         IsInitialized = true;
 
-        _logger.Information("App settings initialized. Language={Language} Theme={Theme}", Current.LanguageCode, Current.ThemeMode);
+        _logger.LogInformation("App settings initialized. Language={Language} Theme={Theme}", Current.LanguageCode, Current.ThemeMode);
     }
 
     public async Task SaveAsync(AppModelTesterSettings settings, CancellationToken cancellationToken = default)
@@ -64,7 +64,7 @@ public sealed class AppSettingsRuntime : IAppSettingsRuntime
         LastSavedAtUtc = DateTimeOffset.UtcNow;
 
         Apply(normalized);
-        _logger.Information("App settings saved and applied. Language={Language} Theme={Theme}", normalized.LanguageCode, normalized.ThemeMode);
+        _logger.LogInformation("App settings saved and applied. Language={Language} Theme={Theme}", normalized.LanguageCode, normalized.ThemeMode);
     }
 
     public async Task ResetToDefaultsAsync(CancellationToken cancellationToken = default)
@@ -74,7 +74,7 @@ public sealed class AppSettingsRuntime : IAppSettingsRuntime
         LastSavedAtUtc = DateTimeOffset.UtcNow;
 
         Apply(defaults);
-        _logger.Information("App settings reset to defaults and persisted.");
+        _logger.LogInformation("App settings reset to defaults and persisted.");
     }
 
     public async Task DeletePersistedAsync(CancellationToken cancellationToken = default)
@@ -85,7 +85,7 @@ public sealed class AppSettingsRuntime : IAppSettingsRuntime
         Apply(defaults);
         LastSavedAtUtc = null;
 
-        _logger.Information("Persisted app settings deleted. Defaults applied to runtime.");
+        _logger.LogInformation("Persisted app settings deleted. Defaults applied to runtime.");
     }
 
     public Task ReloadAsync(CancellationToken cancellationToken = default)
@@ -99,7 +99,7 @@ public sealed class AppSettingsRuntime : IAppSettingsRuntime
         LastLoadedAtUtc = DateTimeOffset.UtcNow;
 
         Apply(loaded);
-        _logger.Information("App settings loaded from persistence. Language={Language} Theme={Theme}", Current.LanguageCode, Current.ThemeMode);
+        _logger.LogInformation("App settings loaded from persistence. Language={Language} Theme={Theme}", Current.LanguageCode, Current.ThemeMode);
     }
 
     private void Apply(AppModelTesterSettings settings)

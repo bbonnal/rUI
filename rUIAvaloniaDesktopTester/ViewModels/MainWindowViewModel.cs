@@ -30,12 +30,6 @@ public class MainWindowViewModel : ViewModelBase
         {
             new NavigationItemControl
             {
-                Header = "Keys",
-                IconData = IconService.CreateGeometry(Icon.key, IconType.regular),
-                PageViewModelType = typeof(GenerateKeysPageViewModel)
-            },
-            new NavigationItemControl
-            {
                 Header = "Dialogs",
                 IconData = IconService.CreateGeometry(Icon.chat_circle_text, IconType.regular),
                 PageViewModelType = typeof(ContentDialogTestingPageViewModel)
@@ -149,7 +143,7 @@ public class MainWindowViewModel : ViewModelBase
             return;
 
         _isInitialized = true;
-        await Navigation.NavigateToAsync<GenerateKeysPageViewModel>();
+        await Navigation.NavigateToAsync<ContentDialogTestingPageViewModel>();
     }
 
     private void ToggleTheme()
