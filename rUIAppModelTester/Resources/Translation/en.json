@@ -1,0 +1,16 @@
+{
+  "settings.title": "Settings",
+  "settings.subtitle": "Manage persistent application preferences.",
+  "settings.section.general": "General",
+  "settings.language.header": "Language",
+  "settings.language.description": "Select the UI language to persist.",
+  "settings.language.english": "English",
+  "settings.language.french": "Francais",
+  "settings.language.current": "Current language: {Language}",
+  "settings.theme.header": "Theme",
+  "settings.theme.description": "Select the theme mode to persist.",
+  "settings.theme.system": "System",
+  "settings.theme.light": "Light",
+  "settings.theme.dark": "Dark",
+  "settings.theme.current": "Current theme: {Theme}"
+}

@@ -1,0 +1,53 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:rUIAppModelTester.ViewModels"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d" d:DesignWidth="700" d:DesignHeight="700"
+             x:Class="rUIAppModelTester.Views.PersistenceInspectorPageView"
+             x:DataType="vm:PersistenceInspectorPageViewModel">
+
+    <ScrollViewer>
+        <StackPanel Margin="24" Spacing="12">
+            <TextBlock Text="Persistence Inspector"
+                       FontSize="24"
+                       FontWeight="SemiBold" />
+            <TextBlock Text="Live snapshot of runtime settings and persisted payload (minimal model only)."
+                       Foreground="{DynamicResource rUIForegroundSecondaryBrush}" />
+
+            <Button Content="Reload from disk"
+                    HorizontalAlignment="Left"
+                    Command="{Binding ReloadFromDiskCommand}" />
+
+            <TextBlock Text="Runtime values"
+                       FontWeight="SemiBold"
+                       Margin="0,12,0,0" />
+            <TextBlock Text="{Binding RuntimeLanguageCode, StringFormat=LanguageCode: {0}}" />
+            <TextBlock Text="{Binding RuntimeThemeMode, StringFormat=ThemeMode: {0}}" />
+            <TextBlock Text="{Binding LastLoadedAtUtc, StringFormat=LastLoadedAtUtc: {0}}" />
+            <TextBlock Text="{Binding LastSavedAtUtc, StringFormat=LastSavedAtUtc: {0}}" />
+
+            <TextBlock Text="Storage"
+                       FontWeight="SemiBold"
+                       Margin="0,12,0,0" />
+            <TextBlock Text="{Binding SettingsFilePath, StringFormat=File: {0}}"
+                       TextWrapping="Wrap" />
+            <TextBlock Text="{Binding SettingsFileExists, StringFormat=FileExists: {0}}" />
+
+            <TextBlock Text="Persisted JSON"
+                       FontWeight="SemiBold"
+                       Margin="0,12,0,0" />
+            <Border BorderBrush="{DynamicResource rUIBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="6"
+                    Padding="10">
+                <TextBox Text="{Binding PersistedJson}"
+                         AcceptsReturn="True"
+                         IsReadOnly="True"
+                         FontFamily="Cascadia Code, Consolas, monospace"
+                         MinHeight="220"
+                         TextWrapping="Wrap" />
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

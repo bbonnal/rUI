@@ -49,6 +49,7 @@ public class DrawingCanvasControl : Control
     private AvaloniaVector _panAtGestureStart;
     private bool _isMiddlePanning;
     private bool _openContextMenuOnRightRelease;
+    private bool _isLifecycleAttached;
     private ShapeHandleKind _activeHandle = ShapeHandleKind.None;
 
     public static readonly StyledProperty<IList<Shape>> ShapesProperty =
@@ -186,18 +187,10 @@ public class DrawingCanvasControl : Control
         ClipToBounds = true;
         RenderOptions.SetBitmapInterpolationMode(this, BitmapInterpolationMode.None);
         Shapes = [];
-        AttachShapesCollection(Shapes);
-
         ComputedShapeIds = [];
-        AttachComputedShapeIdsCollection(ComputedShapeIds);
 
         _contextMenu = new DrawingCanvasContextMenu();
-        _contextMenu.CanvasSettingsRequested += OnCanvasSettingsRequested;
-        _contextMenu.DeleteShapeRequested += OnDeleteShapeRequested;
-        _contextMenu.CenterViewRequested += OnCenterViewRequested;
-        _contextMenu.PropertiesRequested += OnPropertiesRequested;
         ContextMenu = _contextMenu;
-        ContextRequested += OnContextRequested;
     }
 
     public IList<Shape> Shapes
@@ -476,6 +469,18 @@ public class DrawingCanvasControl : Control
         }
     }
 
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        AttachLifecycleHandlers();
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnDetachedFromVisualTree(e);
+        DetachLifecycleHandlers();
+    }
+
     protected override void OnPointerPressed(PointerPressedEventArgs e)
     {
         base.OnPointerPressed(e);
@@ -729,6 +734,9 @@ public class DrawingCanvasControl : Control
 
     private void AttachShapesCollection(IList<Shape> shapes)
     {
+        if (!_isLifecycleAttached)
+            return;
+
         if (shapes is INotifyCollectionChanged observableCollection)
             observableCollection.CollectionChanged += OnShapesCollectionChanged;
     }
@@ -741,6 +749,9 @@ public class DrawingCanvasControl : Control
 
     private void AttachComputedShapeIdsCollection(IList<string> computedShapeIds)
     {
+        if (!_isLifecycleAttached)
+            return;
+
         if (computedShapeIds is INotifyCollectionChanged observableCollection)
             observableCollection.CollectionChanged += OnComputedShapeIdsCollectionChanged;
     }
@@ -837,7 +848,7 @@ public class DrawingCanvasControl : Control
             dialog.PrimaryButtonCommand = new ActionCommand(() =>
             {
                 applyChanges();
-                _imageCache.Clear();
+                ClearImageCache();
                 InvalidateVisual();
             });
         });
@@ -1592,6 +1603,56 @@ public class DrawingCanvasControl : Control
 
             return null;
         }
+    }
+
+    private void AttachLifecycleHandlers()
+    {
+        if (_isLifecycleAttached)
+            return;
+
+        _isLifecycleAttached = true;
+        _contextMenu.CanvasSettingsRequested += OnCanvasSettingsRequested;
+        _contextMenu.DeleteShapeRequested += OnDeleteShapeRequested;
+        _contextMenu.CenterViewRequested += OnCenterViewRequested;
+        _contextMenu.PropertiesRequested += OnPropertiesRequested;
+        ContextRequested += OnContextRequested;
+        AttachShapesCollection(Shapes);
+        AttachComputedShapeIdsCollection(ComputedShapeIds);
+    }
+
+    private void DetachLifecycleHandlers()
+    {
+        if (!_isLifecycleAttached)
+            return;
+
+        _contextMenu.CanvasSettingsRequested -= OnCanvasSettingsRequested;
+        _contextMenu.DeleteShapeRequested -= OnDeleteShapeRequested;
+        _contextMenu.CenterViewRequested -= OnCenterViewRequested;
+        _contextMenu.PropertiesRequested -= OnPropertiesRequested;
+        ContextRequested -= OnContextRequested;
+        DetachShapesCollection(Shapes);
+        DetachComputedShapeIdsCollection(ComputedShapeIds);
+        _contextMenu.Close();
+        _openContextMenuOnRightRelease = false;
+        _isMiddlePanning = false;
+        _gestureStartWorld = null;
+        _gestureStartScreen = null;
+        _activeHandle = ShapeHandleKind.None;
+        _lastDragWorld = null;
+        _previewShape = null;
+        _hoveredShape = null;
+        _contextMenuTargetShape = null;
+        _selectedShape = null;
+        ClearImageCache();
+        _isLifecycleAttached = false;
+    }
+
+    private void ClearImageCache()
+    {
+        foreach (var cachedBitmap in _imageCache.Values)
+            cachedBitmap?.Dispose();
+
+        _imageCache.Clear();
     }
 
     private Rect CreateRectFromPoints(AvaloniaPoint p1, AvaloniaPoint p2)

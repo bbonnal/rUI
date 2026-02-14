@@ -2,6 +2,7 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Controls;
 using Avalonia.Data;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia;
@@ -115,6 +116,8 @@ public class CalendarScheduleControl : TemplatedControl
     {
         base.OnApplyTemplate(e);
 
+        UnwireTemplatePartEvents();
+
         // Header
         _previousButton = e.NameScope.Find<Button>("PART_PreviousButton");
         _nextButton = e.NameScope.Find<Button>("PART_NextButton");
@@ -142,26 +145,19 @@ public class CalendarScheduleControl : TemplatedControl
         _monthView = e.NameScope.Find<Control>("PART_MonthView");
         _weekView = e.NameScope.Find<Control>("PART_WeekView");
 
-        // Wire events
-        if (_previousButton != null) _previousButton.Click += (_, _) => NavigatePrevious();
-        if (_nextButton != null) _nextButton.Click += (_, _) => NavigateNext();
-        if (_todayButton != null) _todayButton.Click += (_, _) => NavigateToday();
-        if (_weekButton != null) _weekButton.Click += (_, _) => ViewMode = CalendarViewMode.Week;
-        if (_monthButton != null) _monthButton.Click += (_, _) => ViewMode = CalendarViewMode.Month;
-        if (_miniCalPrevButton != null) _miniCalPrevButton.Click += (_, _) => MiniCalNavigate(-1);
-        if (_miniCalNextButton != null) _miniCalNextButton.Click += (_, _) => MiniCalNavigate(1);
-
-        if (_weekViewTimeGrid != null)
-        {
-            _weekViewTimeGrid.Background = Brushes.Transparent;
-            _weekViewTimeGrid.PointerPressed += (_, _) => SelectedItem = null;
-        }
+        WireTemplatePartEvents();
 
         _miniCalDisplayMonth = new DateTimeOffset(DisplayDate.Year, DisplayDate.Month, 1, 0, 0, 0, DisplayDate.Offset);
         _initialScrollDone = false;
 
         UpdatePseudoClasses();
         Rebuild();
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnDetachedFromVisualTree(e);
+        UnwireTemplatePartEvents();
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
@@ -226,6 +222,59 @@ public class CalendarScheduleControl : TemplatedControl
         _miniCalDisplayMonth = _miniCalDisplayMonth.AddMonths(monthDelta);
         UpdateMiniCalendar();
     }
+
+    private void WireTemplatePartEvents()
+    {
+        if (_previousButton != null)
+            _previousButton.Click += OnPreviousButtonClick;
+        if (_nextButton != null)
+            _nextButton.Click += OnNextButtonClick;
+        if (_todayButton != null)
+            _todayButton.Click += OnTodayButtonClick;
+        if (_weekButton != null)
+            _weekButton.Click += OnWeekButtonClick;
+        if (_monthButton != null)
+            _monthButton.Click += OnMonthButtonClick;
+        if (_miniCalPrevButton != null)
+            _miniCalPrevButton.Click += OnMiniCalPreviousButtonClick;
+        if (_miniCalNextButton != null)
+            _miniCalNextButton.Click += OnMiniCalNextButtonClick;
+
+        if (_weekViewTimeGrid != null)
+        {
+            _weekViewTimeGrid.Background = Brushes.Transparent;
+            _weekViewTimeGrid.PointerPressed += OnWeekViewTimeGridPointerPressed;
+        }
+    }
+
+    private void UnwireTemplatePartEvents()
+    {
+        if (_previousButton != null)
+            _previousButton.Click -= OnPreviousButtonClick;
+        if (_nextButton != null)
+            _nextButton.Click -= OnNextButtonClick;
+        if (_todayButton != null)
+            _todayButton.Click -= OnTodayButtonClick;
+        if (_weekButton != null)
+            _weekButton.Click -= OnWeekButtonClick;
+        if (_monthButton != null)
+            _monthButton.Click -= OnMonthButtonClick;
+        if (_miniCalPrevButton != null)
+            _miniCalPrevButton.Click -= OnMiniCalPreviousButtonClick;
+        if (_miniCalNextButton != null)
+            _miniCalNextButton.Click -= OnMiniCalNextButtonClick;
+        if (_weekViewTimeGrid != null)
+            _weekViewTimeGrid.PointerPressed -= OnWeekViewTimeGridPointerPressed;
+    }
+
+    private void OnPreviousButtonClick(object? sender, RoutedEventArgs e) => NavigatePrevious();
+    private void OnNextButtonClick(object? sender, RoutedEventArgs e) => NavigateNext();
+    private void OnTodayButtonClick(object? sender, RoutedEventArgs e) => NavigateToday();
+    private void OnWeekButtonClick(object? sender, RoutedEventArgs e) => ViewMode = CalendarViewMode.Week;
+    private void OnMonthButtonClick(object? sender, RoutedEventArgs e) => ViewMode = CalendarViewMode.Month;
+    private void OnMiniCalPreviousButtonClick(object? sender, RoutedEventArgs e) => MiniCalNavigate(-1);
+    private void OnMiniCalNextButtonClick(object? sender, RoutedEventArgs e) => MiniCalNavigate(1);
+    private void OnWeekViewTimeGridPointerPressed(object? sender, PointerPressedEventArgs e) => SelectedItem = null;
 
     private void Rebuild()
     {

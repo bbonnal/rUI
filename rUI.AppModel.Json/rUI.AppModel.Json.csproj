@@ -1,0 +1,20 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>true</IsPackable>
+    <PackageId>rUI.AppModel.Json</PackageId>
+    <Title>rUI AppModel JSON Runtime</Title>
+    <Description>JSON and file-based implementations for rUI.AppModel contracts.</Description>
+    <Authors>rUI</Authors>
+    <PackageTags>rUI;appmodel;json;settings;recovery</PackageTags>
+    <RootNamespace>rUI.AppModel.Json</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\rUI.AppModel\rUI.AppModel.csproj" />
+  </ItemGroup>
+
+</Project>

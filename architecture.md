@@ -11,6 +11,10 @@ This document describes the architectural decisions currently implemented in `rU
 
 ## Project Structure
 
+- `rUI.AppModel`
+  - Application-model contracts for settings persistence and recovery orchestration boundaries.
+- `rUI.AppModel.Json`
+  - JSON and file-based runtime implementations for `rUI.AppModel`.
 - `rUI.Avalonia.Desktop`
   - Reusable controls (`Navigation`, `Ribbon`, `Docking`, dialogs, overlays, info bar).
   - Service abstractions and implementations (`INavigationService`, `IContentDialogService`, etc.).
@@ -166,3 +170,10 @@ The app is now directed toward a modular architecture where:
 - and object creation is governed by explicit DI lifetimes.
 
 This is the intended foundation for scaling features without increasing coupling.
+
+## AppModel Initiative
+
+The app-model contracts initiative is tracked under:
+- `docs/appmodel/README.md`
+- `docs/appmodel/implementation-roadmap.md`
+- `docs/appmodel/decision-checkpoints.md`

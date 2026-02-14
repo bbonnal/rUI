@@ -18,6 +18,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\rUI.AppModel\rUI.AppModel.csproj" />
+    <ProjectReference Include="..\rUI.AppModel.Json\rUI.AppModel.Json.csproj" />
     <ProjectReference Include="..\rUI.Drawing.Core\rUI.Drawing.Core.csproj" />
     <ProjectReference Include="..\rUI.Avalonia.Desktop\rUI.Avalonia.Desktop.csproj" />
     <ProjectReference Include="..\rUI.Drawing.Avalonia\rUI.Drawing.Avalonia.csproj" />

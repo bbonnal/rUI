@@ -1,0 +1,31 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:rUIAppModelTester.ViewModels"
+        xmlns:controls="using:rUI.Avalonia.Desktop.Controls"
+        xmlns:ruiDrawing="using:rUI.Drawing.Avalonia.Controls.Drawing"
+        xmlns:nav="using:rUI.Avalonia.Desktop.Controls.Navigation"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        x:Class="rUIAppModelTester.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Icon="/Assets/avalonia-logo.ico"
+        Title="rUI AppModel Tester"
+        Background="{DynamicResource rUIBackgroundBrush}">
+
+    <Panel>
+        <DockPanel>
+            <nav:NavigationControl DockPanel.Dock="Left"
+                                   Items="{Binding Navigation.Items}"
+                                   FooterItems="{Binding Navigation.FooterItems}"
+                                   SelectedItem="{Binding Navigation.SelectedItem}"
+                                    />
+            <ContentControl Content="{Binding Navigation.CurrentPage}"
+                            Margin="0" />
+        </DockPanel>
+
+        <ruiDrawing:PropertiesDialog x:Name="HostDialog" />
+        <controls:OverlayControl x:Name="HostOverlay" />
+        <controls:InfoBarControl x:Name="HostInfoBar" />
+    </Panel>
+</Window>

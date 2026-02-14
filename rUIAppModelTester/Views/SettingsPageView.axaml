@@ -1,0 +1,90 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:rUIAppModelTester.ViewModels"
+             xmlns:tr="using:rUI.Avalonia.Desktop.Translation"
+             xmlns:rui="using:rUI.Avalonia.Desktop.Controls"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:pia="using:PhosphorIconsAvalonia.Markup"
+             mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="700"
+             x:Class="rUIAppModelTester.Views.SettingsPageView"
+             x:DataType="vm:SettingsPageViewModel">
+
+    <ScrollViewer>
+        <StackPanel Margin="24" Spacing="16">
+            <Grid ColumnDefinitions="*,Auto,Auto,Auto"
+                  ColumnSpacing="8">
+                <TextBlock Grid.Column="0"
+                           VerticalAlignment="Center"
+                           Text="{tr:Translate settings.title}"
+                           FontSize="24"
+                           FontWeight="SemiBold" />
+                <Button Grid.Column="1"
+                        Command="{Binding SaveSettingsCommand}"
+                        ToolTip.Tip="Save settings">
+                    <StackPanel Orientation="Horizontal"
+                                Spacing="6">
+                        <PathIcon Width="14"
+                                  Height="14"
+                                  Data="M5 3h10a2 2 0 0 1 2 2v14H3V5a2 2 0 0 1 2-2zm1 2v4h8V5H6zm1 8h6v4H7v-4z" />
+                        <TextBlock Text="Save" />
+                    </StackPanel>
+                </Button>
+                <Button Grid.Column="2"
+                        Content="Reset defaults"
+                        Command="{Binding ResetDefaultsCommand}" />
+                <Button Grid.Column="3"
+                        Content="Delete persisted"
+                        Command="{Binding DeletePersistedSettingsCommand}" />
+            </Grid>
+
+            <TextBlock Text="{tr:Translate settings.subtitle}"
+                       Foreground="{DynamicResource rUIForegroundSecondaryBrush}" />
+
+            <TextBlock Text="{tr:Translate settings.section.general}"
+                       FontSize="16"
+                       FontWeight="SemiBold"
+                       Margin="0,8,0,0" />
+
+            <rui:SettingsCardExpander Header="{tr:Translate settings.language.header}"
+                                      Description="{tr:Translate settings.language.description}"
+                                      IconData="{pia:IconGeometry Icon=translate}">
+                <StackPanel Spacing="12">
+                    <TextBlock Text="{Binding CurrentLanguageDisplay}"
+                               Foreground="{DynamicResource rUIForegroundSecondaryBrush}" />
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button Content="{tr:Translate settings.language.english}"
+                                Command="{Binding SetEnglishCommand}" />
+                        <Button Content="{tr:Translate settings.language.french}"
+                                Command="{Binding SetFrenchCommand}" />
+                    </StackPanel>
+                </StackPanel>
+            </rui:SettingsCardExpander>
+
+            <rui:SettingsCardExpander Header="{tr:Translate settings.theme.header}"
+                                      Description="{tr:Translate settings.theme.description}"
+                                      IconData="{pia:IconGeometry Icon=palette}">
+                <StackPanel Spacing="12">
+                    <TextBlock Text="{Binding CurrentThemeDisplay}"
+                               Foreground="{DynamicResource rUIForegroundSecondaryBrush}" />
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button Content="{tr:Translate settings.theme.system}"
+                                Command="{Binding SetThemeSystemCommand}" />
+                        <Button Content="{tr:Translate settings.theme.light}"
+                                Command="{Binding SetThemeLightCommand}" />
+                        <Button Content="{tr:Translate settings.theme.dark}"
+                                Command="{Binding SetThemeDarkCommand}" />
+                    </StackPanel>
+                </StackPanel>
+            </rui:SettingsCardExpander>
+
+            <TextBlock Text="{Binding LastAction}"
+                       IsVisible="{Binding LastAction, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                       FontWeight="SemiBold"
+                       Margin="0,8,0,0" />
+
+            <TextBlock Text="{Binding SaveStatus}"
+                       Foreground="{DynamicResource rUIForegroundSecondaryBrush}" />
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

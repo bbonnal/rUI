@@ -1,0 +1,16 @@
+{
+  "settings.title": "Parametres",
+  "settings.subtitle": "Gerez les preferences persistantes de l'application.",
+  "settings.section.general": "General",
+  "settings.language.header": "Langue",
+  "settings.language.description": "Selectionnez la langue de l'interface a persister.",
+  "settings.language.english": "Anglais",
+  "settings.language.french": "Francais",
+  "settings.language.current": "Langue actuelle : {Language}",
+  "settings.theme.header": "Theme",
+  "settings.theme.description": "Selectionnez le mode de theme a persister.",
+  "settings.theme.system": "Systeme",
+  "settings.theme.light": "Clair",
+  "settings.theme.dark": "Sombre",
+  "settings.theme.current": "Theme actuel : {Theme}"
+}

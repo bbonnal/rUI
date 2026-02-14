@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>true</IsPackable>
+    <PackageId>rUI.AppModel</PackageId>
+    <Title>rUI App Model</Title>
+    <Description>Application model contracts for settings, persistence, and session recovery.</Description>
+    <Authors>rUI</Authors>
+    <PackageTags>rUI;appmodel;settings;persistence;recovery</PackageTags>
+    <RootNamespace>rUI.AppModel</RootNamespace>
+  </PropertyGroup>
+
+</Project>

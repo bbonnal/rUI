@@ -1,0 +1,97 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:rUIAppModelTester.ViewModels"
+             xmlns:editors="using:rUI.Avalonia.Desktop.Controls.Editors"
+             xmlns:rui="using:rUI.Avalonia.Desktop.Controls"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DesignWidth="900"
+             d:DesignHeight="700"
+             x:Class="rUIAppModelTester.Views.ControlsShowcasePageView"
+             x:DataType="vm:ControlsShowcasePageViewModel">
+
+    <ScrollViewer>
+        <StackPanel Margin="24"
+                    Spacing="16">
+            <TextBlock Text="Controls Showcase"
+                       FontSize="24"
+                       FontWeight="SemiBold" />
+
+            <TextBlock Text="Unified place to validate key rUI controls while building new framework features."
+                       Foreground="{DynamicResource rUIForegroundSecondaryBrush}" />
+
+            <Border BorderBrush="{DynamicResource rUIBorderSubtleBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Padding="12">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="Services"
+                               FontWeight="SemiBold" />
+                    <WrapPanel Orientation="Horizontal"
+                               ItemHeight="32"
+                               ItemWidth="140">
+                        <Button Content="Dialog"
+                                Command="{Binding ShowDialogCommand}" />
+                        <Button Content="Overlay Show"
+                                Command="{Binding ShowOverlayCommand}" />
+                        <Button Content="Overlay Hide"
+                                Command="{Binding HideOverlayCommand}" />
+                        <Button Content="InfoBar Info"
+                                Command="{Binding ShowInfoBarCommand}" />
+                        <Button Content="InfoBar Success"
+                                Command="{Binding ShowSuccessBarCommand}" />
+                    </WrapPanel>
+                </StackPanel>
+            </Border>
+
+            <Border BorderBrush="{DynamicResource rUIBorderSubtleBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Padding="12">
+                <StackPanel Spacing="10">
+                    <TextBlock Text="Editors"
+                               FontWeight="SemiBold" />
+                    <editors:TextEditor Title="Text"
+                                        Text="{Binding TextValue, Mode=TwoWay}"
+                                        Watermark="Enter text" />
+                    <editors:DoubleEditor Title="Double"
+                                          Value="{Binding NumberValue, Mode=TwoWay}"
+                                          Digits="2"
+                                          Minimum="0"
+                                          Unit="u" />
+                    <editors:IntEditor Title="Integer"
+                                       Value="{Binding CountValue, Mode=TwoWay}"
+                                       Minimum="0"
+                                       Maximum="1000" />
+                    <editors:MultiLineTextEditor Title="Notes"
+                                                 Text="{Binding NotesValue, Mode=TwoWay}"
+                                                 Watermark="Multi-line notes" />
+                </StackPanel>
+            </Border>
+
+            <Border BorderBrush="{DynamicResource rUIBorderSubtleBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Padding="12">
+                <StackPanel Spacing="10">
+                    <TextBlock Text="Settings Cards"
+                               FontWeight="SemiBold" />
+                    <rui:SettingsCardControl Header="Appearance"
+                                             Description="Theme and density."
+                                             IconData="M12 3L4 7v6c0 5 3.5 9 8 10 4.5-1 8-5 8-10V7l-8-4z" />
+                    <rui:SettingsCardExpander Header="Advanced"
+                                              Description="Expandable section."
+                                              IconData="M12 2 2 7l10 5 10-5-10-5z">
+                        <TextBlock Text="Place advanced options here."
+                                   Foreground="{DynamicResource rUIForegroundSecondaryBrush}" />
+                    </rui:SettingsCardExpander>
+                </StackPanel>
+            </Border>
+
+            <TextBlock Text="{Binding LastAction}"
+                       FontWeight="SemiBold"
+                       IsVisible="{Binding LastAction, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

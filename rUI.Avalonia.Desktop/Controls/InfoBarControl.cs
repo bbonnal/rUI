@@ -15,6 +15,9 @@ public enum InfoBarSeverity
 
 public class InfoBarControl : ContentControl
 {
+    private Button? _closeButtonPart;
+    private TaskCompletionSource? _pendingShowTaskCompletionSource;
+
     public static readonly StyledProperty<string?> TitleProperty =
         AvaloniaProperty.Register<InfoBarControl, string?>(nameof(Title));
 
@@ -57,13 +60,19 @@ public class InfoBarControl : ContentControl
     {
         base.OnApplyTemplate(e);
 
-        var closeButton = e.NameScope.Find<Button>("PART_CloseButton");
-        if (closeButton != null)
-            closeButton.Click += OnCloseButtonClick;
+        UnregisterTemplatePartHandlers();
+
+        _closeButtonPart = e.NameScope.Find<Button>("PART_CloseButton");
+        if (_closeButtonPart is not null)
+            _closeButtonPart.Click += OnCloseButtonClick;
     }
 
-    // TODO: Should those method be here ??
-    
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnDetachedFromVisualTree(e);
+        UnregisterTemplatePartHandlers();
+    }
+
     private void OnCloseButtonClick(object? sender, RoutedEventArgs e)
     {
         Close();
@@ -71,30 +80,42 @@ public class InfoBarControl : ContentControl
 
     public void Close()
     {
+        if (!IsOpen)
+            return;
+
         IsOpen = false;
+        _pendingShowTaskCompletionSource?.TrySetResult();
+        _pendingShowTaskCompletionSource = null;
         Closed?.Invoke(this, EventArgs.Empty);
     }
 
     public Task CloseAsync()
     {
+        if (!IsOpen)
+            return Task.CompletedTask;
+
+        var pendingTask = _pendingShowTaskCompletionSource?.Task;
         Close();
-        return Task.CompletedTask;
+        return pendingTask ?? Task.CompletedTask;
     }
 
     public Task ShowAsync()
     {
-        var tcs = new TaskCompletionSource();
-        EventHandler? handler = null;
+        if (_pendingShowTaskCompletionSource is not null)
+            return _pendingShowTaskCompletionSource.Task;
 
-        handler = (s, e) =>
-        {
-            Closed -= handler;
-            tcs.SetResult();
-        };
-
-        Closed += handler;
+        _pendingShowTaskCompletionSource = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         IsOpen = true;
 
-        return tcs.Task;
+        return _pendingShowTaskCompletionSource.Task;
+    }
+
+    private void UnregisterTemplatePartHandlers()
+    {
+        if (_closeButtonPart is null)
+            return;
+
+        _closeButtonPart.Click -= OnCloseButtonClick;
+        _closeButtonPart = null;
     }
 }
