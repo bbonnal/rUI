@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
+using Avalonia.Threading;
 using Avalonia;
 using System.Windows.Input;
 
@@ -19,6 +20,10 @@ public enum DialogResult
 public class ContentDialog : ContentControl
 {
     private Border? _overlayPart;
+    private Button? _primaryButtonPart;
+    private Button? _secondaryButtonPart;
+    private Button? _closeButtonPart;
+    private TaskCompletionSource<DialogResult>? _pendingShowTaskCompletionSource;
 
     public static readonly StyledProperty<string?> TitleProperty =
         AvaloniaProperty.Register<ContentDialog, string?>(nameof(Title));
@@ -60,6 +65,9 @@ public class ContentDialog : ContentControl
         AvaloniaProperty.Register<ContentDialog, IBrush?>(
             nameof(OverlayBrush),
             new SolidColorBrush(Color.FromArgb(128, 0, 0, 0)));
+
+    public static readonly StyledProperty<bool> IsLightDismissEnabledProperty =
+        AvaloniaProperty.Register<ContentDialog, bool>(nameof(IsLightDismissEnabled), true);
 
     public static readonly StyledProperty<DialogResult> DialogResultProperty =
         AvaloniaProperty.Register<ContentDialog, DialogResult>(nameof(DialogResult), DialogResult.None);
@@ -142,6 +150,12 @@ public class ContentDialog : ContentControl
         set => SetValue(OverlayBrushProperty, value);
     }
 
+    public bool IsLightDismissEnabled
+    {
+        get => GetValue(IsLightDismissEnabledProperty);
+        set => SetValue(IsLightDismissEnabledProperty, value);
+    }
+
     public DialogResult DialogResult
     {
         get => GetValue(DialogResultProperty);
@@ -150,118 +164,203 @@ public class ContentDialog : ContentControl
 
     public event EventHandler<DialogResult>? Closed;
 
-    // TODO: Check how to unregister events when control unloaded/destroyed
     protected override void OnApplyTemplate(TemplateAppliedEventArgs e)
     {
         base.OnApplyTemplate(e);
 
+        UnregisterTemplatePartHandlers();
+
         _overlayPart = e.NameScope.Find<Border>("PART_Overlay");
-        if (_overlayPart != null)
-        {
+        if (_overlayPart is not null)
             _overlayPart.PointerPressed += OnOverlayPointerPressed;
-        }
 
-        var primaryButton = e.NameScope.Find<Button>("PART_PrimaryButton");
-        if (primaryButton != null)
-        {
-            primaryButton.Click += OnPrimaryButtonClick;
-        }
+        _primaryButtonPart = e.NameScope.Find<Button>("PART_PrimaryButton");
+        if (_primaryButtonPart is not null)
+            _primaryButtonPart.Click += OnPrimaryButtonClick;
 
-        var secondaryButton = e.NameScope.Find<Button>("PART_SecondaryButton");
-        if (secondaryButton != null)
-        {
-            secondaryButton.Click += OnSecondaryButtonClick;
-        }
+        _secondaryButtonPart = e.NameScope.Find<Button>("PART_SecondaryButton");
+        if (_secondaryButtonPart is not null)
+            _secondaryButtonPart.Click += OnSecondaryButtonClick;
 
-        var closeButton = e.NameScope.Find<Button>("PART_CloseButton");
-        if (closeButton != null)
-        {
-            closeButton.Click += OnCloseButtonClick;
-        }
+        _closeButtonPart = e.NameScope.Find<Button>("PART_CloseButton");
+        if (_closeButtonPart is not null)
+            _closeButtonPart.Click += OnCloseButtonClick;
     }
 
     protected override void OnKeyDown(KeyEventArgs e)
     {
         base.OnKeyDown(e);
 
-        if (e.Key == Key.Escape && IsOpen)
+        if (!IsOpen)
+            return;
+
+        if (e.Key == Key.Escape)
         {
-            CloseDialog(DialogResult.None);
+            if (IsCloseButtonEnabled && !string.IsNullOrWhiteSpace(CloseButtonText))
+                OnCloseButtonClick(this, new RoutedEventArgs());
+            else
+                CloseDialog(DialogResult.None);
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Enter)
+        {
+            if (!TryInvokeDefaultButton())
+                OnPrimaryButtonClick(this, new RoutedEventArgs());
+
             e.Handled = true;
         }
     }
 
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnDetachedFromVisualTree(e);
+        UnregisterTemplatePartHandlers();
+    }
+
     private void OnOverlayPointerPressed(object? sender, PointerPressedEventArgs e)
     {
+        if (!IsLightDismissEnabled)
+            return;
+
         CloseDialog(DialogResult.None);
     }
 
     private void OnPrimaryButtonClick(object? sender, RoutedEventArgs e)
     {
+        if (!IsPrimaryButtonEnabled || string.IsNullOrWhiteSpace(PrimaryButtonText))
+            return;
+
+        if (PrimaryButtonCommand is not null && !PrimaryButtonCommand.CanExecute(null))
+            return;
+
         PrimaryButtonCommand?.Execute(null);
         CloseDialog(DialogResult.Primary);
     }
 
     private void OnSecondaryButtonClick(object? sender, RoutedEventArgs e)
     {
+        if (!IsSecondaryButtonEnabled || string.IsNullOrWhiteSpace(SecondaryButtonText))
+            return;
+
+        if (SecondaryButtonCommand is not null && !SecondaryButtonCommand.CanExecute(null))
+            return;
+
         SecondaryButtonCommand?.Execute(null);
         CloseDialog(DialogResult.Secondary);
     }
 
     private void OnCloseButtonClick(object? sender, RoutedEventArgs e)
     {
+        if (!IsCloseButtonEnabled || string.IsNullOrWhiteSpace(CloseButtonText))
+            return;
+
+        if (CloseButtonCommand is not null && !CloseButtonCommand.CanExecute(null))
+            return;
+
         CloseButtonCommand?.Execute(null);
         CloseDialog(DialogResult.Close);
     }
 
     private void CloseDialog(DialogResult result)
     {
+        if (!IsOpen)
+            return;
+
         DialogResult = result;
         IsOpen = false;
+        _pendingShowTaskCompletionSource?.TrySetResult(result);
+        _pendingShowTaskCompletionSource = null;
         Closed?.Invoke(this, result);
     }
 
-    // TODO: Should Hide be here ??
     public Task HideAsync()
     {
         if (!IsOpen)
             return Task.CompletedTask;
 
-        var tcs = new TaskCompletionSource();
-        EventHandler<DialogResult>? handler = null;
-
-        handler = (s, result) =>
-        {
-            Closed -= handler;
-            tcs.SetResult();
-        };
-
-        Closed += handler;
+        var pendingTask = _pendingShowTaskCompletionSource?.Task;
         CloseDialog(DialogResult.None);
-
-        return tcs.Task;
+        return pendingTask ?? Task.CompletedTask;
     }
 
-    // TODO: Should Show be here ??
     public Task<DialogResult> ShowAsync()
     {
-        var tcs = new TaskCompletionSource<DialogResult>();
-        EventHandler<DialogResult>? handler = null;
+        if (_pendingShowTaskCompletionSource is not null)
+            return _pendingShowTaskCompletionSource.Task;
 
-        handler = (s, result) =>
-        {
-            Closed -= handler;
-            tcs.SetResult(result);
-        };
-
-        Closed += handler;
+        _pendingShowTaskCompletionSource = new TaskCompletionSource<DialogResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+        DialogResult = DialogResult.None;
         IsOpen = true;
+        FocusDefaultButton();
 
-        return tcs.Task;
+        return _pendingShowTaskCompletionSource.Task;
+    }
+
+    private void UnregisterTemplatePartHandlers()
+    {
+        if (_overlayPart is not null)
+        {
+            _overlayPart.PointerPressed -= OnOverlayPointerPressed;
+            _overlayPart = null;
+        }
+
+        if (_primaryButtonPart is not null)
+        {
+            _primaryButtonPart.Click -= OnPrimaryButtonClick;
+            _primaryButtonPart = null;
+        }
+
+        if (_secondaryButtonPart is not null)
+        {
+            _secondaryButtonPart.Click -= OnSecondaryButtonClick;
+            _secondaryButtonPart = null;
+        }
+
+        if (_closeButtonPart is not null)
+        {
+            _closeButtonPart.Click -= OnCloseButtonClick;
+            _closeButtonPart = null;
+        }
+    }
+
+    private bool TryInvokeDefaultButton()
+    {
+        return DefaultButton switch
+        {
+            DefaultButton.Primary => TryInvokeButton(_primaryButtonPart, OnPrimaryButtonClick),
+            DefaultButton.Secondary => TryInvokeButton(_secondaryButtonPart, OnSecondaryButtonClick),
+            DefaultButton.Close => TryInvokeButton(_closeButtonPart, OnCloseButtonClick),
+            _ => false
+        };
+    }
+
+    private static bool TryInvokeButton(Button? button, EventHandler<RoutedEventArgs> clickHandler)
+    {
+        if (button is null || !button.IsVisible || !button.IsEnabled)
+            return false;
+
+        clickHandler(button, new RoutedEventArgs());
+        return true;
+    }
+
+    private void FocusDefaultButton()
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            var button = DefaultButton switch
+            {
+                DefaultButton.Primary => _primaryButtonPart,
+                DefaultButton.Secondary => _secondaryButtonPart,
+                DefaultButton.Close => _closeButtonPart,
+                _ => _primaryButtonPart
+            };
+
+            if (button is not null && button.IsVisible && button.IsEnabled)
+                button.Focus();
+        }, DispatcherPriority.Loaded);
     }
 }
 
-// TODO: Should this enum be here ??
 public enum DefaultButton
 {
     None,

@@ -12,6 +12,7 @@ using Avalonia.Threading;
 using Flowxel.Core.Geometry.Primitives;
 using Flowxel.Core.Geometry.Shapes;
 using rUI.Avalonia.Desktop.Controls;
+using rUI.Avalonia.Desktop.Controls.Editors;
 using rUI.Avalonia.Desktop.Services;
 using rUI.Drawing.Core;
 using rUI.Drawing.Core.Shapes;
@@ -848,26 +849,33 @@ public class DrawingCanvasControl : Control
             return;
 
         var initialColor = (CanvasBackground as ISolidColorBrush)?.Color.ToString() ?? "#00000000";
-        var colorBox = new TextBox
+        var colorEditor = new TextEditor
         {
+            Title = "Background color",
             Text = initialColor,
-            MinWidth = 220,
-            Watermark = "#RRGGBB or #AARRGGBB"
+            Watermark = "#RRGGBB or #AARRGGBB",
+            HorizontalAlignment = HorizontalAlignment.Stretch
         };
         var showBoundaryCheck = new CheckBox
         {
             IsChecked = ShowCanvasBoundary,
             Content = "Show boundary"
         };
-        var widthBox = new TextBox
+        var widthEditor = new DoubleEditor
         {
-            Text = CanvasBoundaryWidth.ToString("0.###", CultureInfo.InvariantCulture),
-            MinWidth = 220
+            Title = "Boundary width",
+            Value = CanvasBoundaryWidth,
+            Digits = 3,
+            Minimum = 0,
+            HorizontalAlignment = HorizontalAlignment.Stretch
         };
-        var heightBox = new TextBox
+        var heightEditor = new DoubleEditor
         {
-            Text = CanvasBoundaryHeight.ToString("0.###", CultureInfo.InvariantCulture),
-            MinWidth = 220
+            Title = "Boundary height",
+            Value = CanvasBoundaryHeight,
+            Digits = 3,
+            Minimum = 0,
+            HorizontalAlignment = HorizontalAlignment.Stretch
         };
 
         var content = new StackPanel
@@ -876,10 +884,10 @@ public class DrawingCanvasControl : Control
             MinWidth = 420,
             Children =
             {
-                BuildLabeledEditorRow("Background color", colorBox),
+                colorEditor,
                 showBoundaryCheck,
-                BuildLabeledEditorRow("Boundary width", widthBox),
-                BuildLabeledEditorRow("Boundary height", heightBox)
+                widthEditor,
+                heightEditor
             }
         };
 
@@ -892,10 +900,10 @@ public class DrawingCanvasControl : Control
             dialog.DefaultButton = DefaultButton.Primary;
             dialog.PrimaryButtonCommand = new ActionCommand(() =>
             {
-                CanvasBackground = TryParseBrushFromText(colorBox.Text, CanvasBackground);
+                CanvasBackground = TryParseBrushFromText(colorEditor.Text, CanvasBackground);
                 ShowCanvasBoundary = showBoundaryCheck.IsChecked == true;
-                CanvasBoundaryWidth = ParseOrDefault(widthBox, CanvasBoundaryWidth);
-                CanvasBoundaryHeight = ParseOrDefault(heightBox, CanvasBoundaryHeight);
+                CanvasBoundaryWidth = GetEditorValueOr(widthEditor, CanvasBoundaryWidth);
+                CanvasBoundaryHeight = GetEditorValueOr(heightEditor, CanvasBoundaryHeight);
                 InvalidateVisual();
             });
         });
@@ -909,10 +917,10 @@ public class DrawingCanvasControl : Control
             MinWidth = 420
         };
 
-        var xBox = AddTextEditor(container, "Position X", shape.Pose.Position.X.ToString("0.###", CultureInfo.InvariantCulture));
-        var yBox = AddTextEditor(container, "Position Y", shape.Pose.Position.Y.ToString("0.###", CultureInfo.InvariantCulture));
-        var oxBox = AddTextEditor(container, "Orientation X", shape.Pose.Orientation.X.ToString("0.###", CultureInfo.InvariantCulture));
-        var oyBox = AddTextEditor(container, "Orientation Y", shape.Pose.Orientation.Y.ToString("0.###", CultureInfo.InvariantCulture));
+        var xEditor = AddNumberEditor(container, "Position X", shape.Pose.Position.X);
+        var yEditor = AddNumberEditor(container, "Position Y", shape.Pose.Position.Y);
+        var oxEditor = AddNumberEditor(container, "Orientation X", shape.Pose.Orientation.X);
+        var oyEditor = AddNumberEditor(container, "Orientation Y", shape.Pose.Orientation.Y);
 
         Action specificApply = () => { };
 
@@ -920,161 +928,161 @@ public class DrawingCanvasControl : Control
         {
             case Line line:
             {
-                var lengthBox = AddTextEditor(container, "Length", line.Length.ToString("0.###", CultureInfo.InvariantCulture));
-                specificApply = () => line.Length = Math.Max(ParseOrDefault(lengthBox, line.Length), MinShapeSize);
+                var lengthEditor = AddNumberEditor(container, "Length", line.Length, MinShapeSize);
+                specificApply = () => line.Length = Math.Max(GetEditorValueOr(lengthEditor, line.Length), MinShapeSize);
                 break;
             }
             case FlowRectangle rectangle:
             {
-                var widthBox = AddTextEditor(container, "Width", rectangle.Width.ToString("0.###", CultureInfo.InvariantCulture));
-                var heightBox = AddTextEditor(container, "Height", rectangle.Height.ToString("0.###", CultureInfo.InvariantCulture));
+                var widthEditor = AddNumberEditor(container, "Width", rectangle.Width, MinShapeSize);
+                var heightEditor = AddNumberEditor(container, "Height", rectangle.Height, MinShapeSize);
                 specificApply = () =>
                 {
-                    rectangle.Width = Math.Max(ParseOrDefault(widthBox, rectangle.Width), MinShapeSize);
-                    rectangle.Height = Math.Max(ParseOrDefault(heightBox, rectangle.Height), MinShapeSize);
+                    rectangle.Width = Math.Max(GetEditorValueOr(widthEditor, rectangle.Width), MinShapeSize);
+                    rectangle.Height = Math.Max(GetEditorValueOr(heightEditor, rectangle.Height), MinShapeSize);
                 };
                 break;
             }
             case Circle circle:
             {
-                var radiusBox = AddTextEditor(container, "Radius", circle.Radius.ToString("0.###", CultureInfo.InvariantCulture));
-                specificApply = () => circle.Radius = Math.Max(ParseOrDefault(radiusBox, circle.Radius), MinShapeSize);
+                var radiusEditor = AddNumberEditor(container, "Radius", circle.Radius, MinShapeSize);
+                specificApply = () => circle.Radius = Math.Max(GetEditorValueOr(radiusEditor, circle.Radius), MinShapeSize);
                 break;
             }
             case ImageShape image:
             {
-                var widthBox = AddTextEditor(container, "Width", image.Width.ToString("0.###", CultureInfo.InvariantCulture));
-                var heightBox = AddTextEditor(container, "Height", image.Height.ToString("0.###", CultureInfo.InvariantCulture));
-                var pathBox = AddTextEditor(container, "Image path", image.SourcePath);
+                var widthEditor = AddNumberEditor(container, "Width", image.Width, MinShapeSize);
+                var heightEditor = AddNumberEditor(container, "Height", image.Height, MinShapeSize);
+                var pathEditor = AddTextEditor(container, "Image path", image.SourcePath);
                 specificApply = () =>
                 {
-                    image.Width = Math.Max(ParseOrDefault(widthBox, image.Width), MinShapeSize);
-                    image.Height = Math.Max(ParseOrDefault(heightBox, image.Height), MinShapeSize);
-                    image.SourcePath = pathBox.Text?.Trim() ?? string.Empty;
+                    image.Width = Math.Max(GetEditorValueOr(widthEditor, image.Width), MinShapeSize);
+                    image.Height = Math.Max(GetEditorValueOr(heightEditor, image.Height), MinShapeSize);
+                    image.SourcePath = pathEditor.Text?.Trim() ?? string.Empty;
                 };
                 break;
             }
             case TextBoxShape textBox:
             {
-                var widthBox = AddTextEditor(container, "Width", textBox.Width.ToString("0.###", CultureInfo.InvariantCulture));
-                var heightBox = AddTextEditor(container, "Height", textBox.Height.ToString("0.###", CultureInfo.InvariantCulture));
-                var textValueBox = AddTextEditor(container, "Text", textBox.Text);
-                var fontSizeBox = AddTextEditor(container, "Font size", textBox.FontSize.ToString("0.###", CultureInfo.InvariantCulture));
+                var widthEditor = AddNumberEditor(container, "Width", textBox.Width, MinShapeSize);
+                var heightEditor = AddNumberEditor(container, "Height", textBox.Height, MinShapeSize);
+                var textValueEditor = AddTextEditor(container, "Text", textBox.Text);
+                var fontSizeEditor = AddNumberEditor(container, "Font size", textBox.FontSize, 1);
                 specificApply = () =>
                 {
-                    textBox.Width = Math.Max(ParseOrDefault(widthBox, textBox.Width), MinShapeSize);
-                    textBox.Height = Math.Max(ParseOrDefault(heightBox, textBox.Height), MinShapeSize);
-                    textBox.Text = textValueBox.Text ?? string.Empty;
-                    textBox.FontSize = Math.Max(ParseOrDefault(fontSizeBox, textBox.FontSize), 1);
+                    textBox.Width = Math.Max(GetEditorValueOr(widthEditor, textBox.Width), MinShapeSize);
+                    textBox.Height = Math.Max(GetEditorValueOr(heightEditor, textBox.Height), MinShapeSize);
+                    textBox.Text = textValueEditor.Text ?? string.Empty;
+                    textBox.FontSize = Math.Max(GetEditorValueOr(fontSizeEditor, textBox.FontSize), 1);
                 };
                 break;
             }
             case ArrowShape arrow:
             {
-                var lengthBox = AddTextEditor(container, "Length", arrow.Length.ToString("0.###", CultureInfo.InvariantCulture));
-                var headLengthBox = AddTextEditor(container, "Head length", arrow.HeadLength.ToString("0.###", CultureInfo.InvariantCulture));
+                var lengthEditor = AddNumberEditor(container, "Length", arrow.Length, MinShapeSize);
+                var headLengthEditor = AddNumberEditor(container, "Head length", arrow.HeadLength, MinShapeSize);
                 specificApply = () =>
                 {
-                    arrow.Length = Math.Max(ParseOrDefault(lengthBox, arrow.Length), MinShapeSize);
-                    arrow.HeadLength = Math.Max(ParseOrDefault(headLengthBox, arrow.HeadLength), MinShapeSize);
+                    arrow.Length = Math.Max(GetEditorValueOr(lengthEditor, arrow.Length), MinShapeSize);
+                    arrow.HeadLength = Math.Max(GetEditorValueOr(headLengthEditor, arrow.HeadLength), MinShapeSize);
                 };
                 break;
             }
             case CenterlineRectangleShape centerlineRectangle:
             {
-                var lengthBox = AddTextEditor(container, "Length", centerlineRectangle.Length.ToString("0.###", CultureInfo.InvariantCulture));
-                var widthBox = AddTextEditor(container, "Width", centerlineRectangle.Width.ToString("0.###", CultureInfo.InvariantCulture));
+                var lengthEditor = AddNumberEditor(container, "Length", centerlineRectangle.Length, MinShapeSize);
+                var widthEditor = AddNumberEditor(container, "Width", centerlineRectangle.Width, MinShapeSize);
                 specificApply = () =>
                 {
-                    centerlineRectangle.Length = Math.Max(ParseOrDefault(lengthBox, centerlineRectangle.Length), MinShapeSize);
-                    centerlineRectangle.Width = Math.Max(ParseOrDefault(widthBox, centerlineRectangle.Width), MinShapeSize);
+                    centerlineRectangle.Length = Math.Max(GetEditorValueOr(lengthEditor, centerlineRectangle.Length), MinShapeSize);
+                    centerlineRectangle.Width = Math.Max(GetEditorValueOr(widthEditor, centerlineRectangle.Width), MinShapeSize);
                 };
                 break;
             }
             case ReferentialShape referential:
             {
-                var xLengthBox = AddTextEditor(container, "X axis length", referential.XAxisLength.ToString("0.###", CultureInfo.InvariantCulture));
-                var yLengthBox = AddTextEditor(container, "Y axis length", referential.YAxisLength.ToString("0.###", CultureInfo.InvariantCulture));
+                var xLengthEditor = AddNumberEditor(container, "X axis length", referential.XAxisLength, MinShapeSize);
+                var yLengthEditor = AddNumberEditor(container, "Y axis length", referential.YAxisLength, MinShapeSize);
                 specificApply = () =>
                 {
-                    referential.XAxisLength = Math.Max(ParseOrDefault(xLengthBox, referential.XAxisLength), MinShapeSize);
-                    referential.YAxisLength = Math.Max(ParseOrDefault(yLengthBox, referential.YAxisLength), MinShapeSize);
+                    referential.XAxisLength = Math.Max(GetEditorValueOr(xLengthEditor, referential.XAxisLength), MinShapeSize);
+                    referential.YAxisLength = Math.Max(GetEditorValueOr(yLengthEditor, referential.YAxisLength), MinShapeSize);
                 };
                 break;
             }
             case DimensionShape dimension:
             {
-                var lengthBox = AddTextEditor(container, "Length", dimension.Length.ToString("0.###", CultureInfo.InvariantCulture));
-                var offsetBox = AddTextEditor(container, "Offset", dimension.Offset.ToString("0.###", CultureInfo.InvariantCulture));
-                var textBox = AddTextEditor(container, "Text", dimension.Text);
+                var lengthEditor = AddNumberEditor(container, "Length", dimension.Length, MinShapeSize);
+                var offsetEditor = AddNumberEditor(container, "Offset", dimension.Offset);
+                var textEditor = AddTextEditor(container, "Text", dimension.Text);
                 specificApply = () =>
                 {
-                    dimension.Length = Math.Max(ParseOrDefault(lengthBox, dimension.Length), MinShapeSize);
-                    dimension.Offset = ParseOrDefault(offsetBox, dimension.Offset);
-                    dimension.Text = textBox.Text ?? string.Empty;
+                    dimension.Length = Math.Max(GetEditorValueOr(lengthEditor, dimension.Length), MinShapeSize);
+                    dimension.Offset = GetEditorValueOr(offsetEditor, dimension.Offset);
+                    dimension.Text = textEditor.Text ?? string.Empty;
                 };
                 break;
             }
             case AngleDimensionShape angleDimension:
             {
-                var radiusBox = AddTextEditor(container, "Radius", angleDimension.Radius.ToString("0.###", CultureInfo.InvariantCulture));
-                var startDegBox = AddTextEditor(container, "Start angle (deg)", (angleDimension.StartAngleRad * 180 / Math.PI).ToString("0.###", CultureInfo.InvariantCulture));
-                var sweepDegBox = AddTextEditor(container, "Sweep angle (deg)", (angleDimension.SweepAngleRad * 180 / Math.PI).ToString("0.###", CultureInfo.InvariantCulture));
-                var textBox = AddTextEditor(container, "Text", angleDimension.Text);
+                var radiusEditor = AddNumberEditor(container, "Radius", angleDimension.Radius, MinShapeSize);
+                var startDegEditor = AddNumberEditor(container, "Start angle (deg)", angleDimension.StartAngleRad * 180 / Math.PI);
+                var sweepDegEditor = AddNumberEditor(container, "Sweep angle (deg)", angleDimension.SweepAngleRad * 180 / Math.PI);
+                var textEditor = AddTextEditor(container, "Text", angleDimension.Text);
                 specificApply = () =>
                 {
-                    angleDimension.Radius = Math.Max(ParseOrDefault(radiusBox, angleDimension.Radius), MinShapeSize);
-                    angleDimension.StartAngleRad = ParseOrDefault(startDegBox, angleDimension.StartAngleRad * 180 / Math.PI) * Math.PI / 180;
-                    angleDimension.SweepAngleRad = ParseOrDefault(sweepDegBox, angleDimension.SweepAngleRad * 180 / Math.PI) * Math.PI / 180;
-                    angleDimension.Text = textBox.Text ?? string.Empty;
+                    angleDimension.Radius = Math.Max(GetEditorValueOr(radiusEditor, angleDimension.Radius), MinShapeSize);
+                    angleDimension.StartAngleRad = GetEditorValueOr(startDegEditor, angleDimension.StartAngleRad * 180 / Math.PI) * Math.PI / 180;
+                    angleDimension.SweepAngleRad = GetEditorValueOr(sweepDegEditor, angleDimension.SweepAngleRad * 180 / Math.PI) * Math.PI / 180;
+                    angleDimension.Text = textEditor.Text ?? string.Empty;
                 };
                 break;
             }
             case TextShape text:
             {
-                var textValueBox = AddTextEditor(container, "Text", text.Text);
-                var fontSizeBox = AddTextEditor(container, "Font size", text.FontSize.ToString("0.###", CultureInfo.InvariantCulture));
+                var textValueEditor = AddTextEditor(container, "Text", text.Text);
+                var fontSizeEditor = AddNumberEditor(container, "Font size", text.FontSize, 1);
                 specificApply = () =>
                 {
-                    text.Text = textValueBox.Text ?? string.Empty;
-                    text.FontSize = Math.Max(ParseOrDefault(fontSizeBox, text.FontSize), 1);
+                    text.Text = textValueEditor.Text ?? string.Empty;
+                    text.FontSize = Math.Max(GetEditorValueOr(fontSizeEditor, text.FontSize), 1);
                 };
                 break;
             }
             case MultilineTextShape multilineText:
             {
-                var textValueBox = AddTextEditor(container, "Text (\\n supported)", multilineText.Text);
-                var fontSizeBox = AddTextEditor(container, "Font size", multilineText.FontSize.ToString("0.###", CultureInfo.InvariantCulture));
-                var widthBox = AddTextEditor(container, "Width", multilineText.Width.ToString("0.###", CultureInfo.InvariantCulture));
+                var textValueEditor = AddMultiLineTextEditor(container, "Text", multilineText.Text);
+                var fontSizeEditor = AddNumberEditor(container, "Font size", multilineText.FontSize, 1);
+                var widthEditor = AddNumberEditor(container, "Width", multilineText.Width, MinShapeSize);
                 specificApply = () =>
                 {
-                    multilineText.Text = textValueBox.Text ?? string.Empty;
-                    multilineText.FontSize = Math.Max(ParseOrDefault(fontSizeBox, multilineText.FontSize), 1);
-                    multilineText.Width = Math.Max(ParseOrDefault(widthBox, multilineText.Width), MinShapeSize);
+                    multilineText.Text = textValueEditor.Text ?? string.Empty;
+                    multilineText.FontSize = Math.Max(GetEditorValueOr(fontSizeEditor, multilineText.FontSize), 1);
+                    multilineText.Width = Math.Max(GetEditorValueOr(widthEditor, multilineText.Width), MinShapeSize);
                 };
                 break;
             }
             case IconShape icon:
             {
-                var iconBox = AddTextEditor(container, "Icon glyph", icon.IconKey);
-                var sizeBox = AddTextEditor(container, "Size", icon.Size.ToString("0.###", CultureInfo.InvariantCulture));
+                var iconEditor = AddTextEditor(container, "Icon glyph", icon.IconKey);
+                var sizeEditor = AddNumberEditor(container, "Size", icon.Size, MinShapeSize);
                 specificApply = () =>
                 {
-                    icon.IconKey = string.IsNullOrWhiteSpace(iconBox.Text) ? icon.IconKey : iconBox.Text;
-                    icon.Size = Math.Max(ParseOrDefault(sizeBox, icon.Size), MinShapeSize);
+                    icon.IconKey = string.IsNullOrWhiteSpace(iconEditor.Text) ? icon.IconKey : iconEditor.Text;
+                    icon.Size = Math.Max(GetEditorValueOr(sizeEditor, icon.Size), MinShapeSize);
                 };
                 break;
             }
             case ArcShape arc:
             {
-                var radiusBox = AddTextEditor(container, "Radius", arc.Radius.ToString("0.###", CultureInfo.InvariantCulture));
-                var startDegBox = AddTextEditor(container, "Start angle (deg)", (arc.StartAngleRad * 180 / Math.PI).ToString("0.###", CultureInfo.InvariantCulture));
-                var sweepDegBox = AddTextEditor(container, "Sweep angle (deg)", (arc.SweepAngleRad * 180 / Math.PI).ToString("0.###", CultureInfo.InvariantCulture));
+                var radiusEditor = AddNumberEditor(container, "Radius", arc.Radius, MinShapeSize);
+                var startDegEditor = AddNumberEditor(container, "Start angle (deg)", arc.StartAngleRad * 180 / Math.PI);
+                var sweepDegEditor = AddNumberEditor(container, "Sweep angle (deg)", arc.SweepAngleRad * 180 / Math.PI);
                 specificApply = () =>
                 {
-                    arc.Radius = Math.Max(ParseOrDefault(radiusBox, arc.Radius), MinShapeSize);
-                    arc.StartAngleRad = ParseOrDefault(startDegBox, arc.StartAngleRad * 180 / Math.PI) * Math.PI / 180;
-                    arc.SweepAngleRad = ParseOrDefault(sweepDegBox, arc.SweepAngleRad * 180 / Math.PI) * Math.PI / 180;
+                    arc.Radius = Math.Max(GetEditorValueOr(radiusEditor, arc.Radius), MinShapeSize);
+                    arc.StartAngleRad = GetEditorValueOr(startDegEditor, arc.StartAngleRad * 180 / Math.PI) * Math.PI / 180;
+                    arc.SweepAngleRad = GetEditorValueOr(sweepDegEditor, arc.SweepAngleRad * 180 / Math.PI) * Math.PI / 180;
                 };
                 break;
             }
@@ -1082,10 +1090,10 @@ public class DrawingCanvasControl : Control
 
         apply = () =>
         {
-            var x = ParseOrDefault(xBox, shape.Pose.Position.X);
-            var y = ParseOrDefault(yBox, shape.Pose.Position.Y);
-            var ox = ParseOrDefault(oxBox, shape.Pose.Orientation.X);
-            var oy = ParseOrDefault(oyBox, shape.Pose.Orientation.Y);
+            var x = GetEditorValueOr(xEditor, shape.Pose.Position.X);
+            var y = GetEditorValueOr(yEditor, shape.Pose.Position.Y);
+            var ox = GetEditorValueOr(oxEditor, shape.Pose.Orientation.X);
+            var oy = GetEditorValueOr(oyEditor, shape.Pose.Orientation.Y);
 
             var orientation = new FlowVector(ox, oy);
             if (orientation.M <= 0.000001)
@@ -1102,44 +1110,52 @@ public class DrawingCanvasControl : Control
         };
     }
 
-    private static TextBox AddTextEditor(Panel parent, string label, string value)
+    private static TextEditor AddTextEditor(Panel parent, string title, string? value, string? watermark = null)
     {
-        var editor = new TextBox
+        var editor = new TextEditor
         {
+            Title = title,
             Text = value,
-            MinWidth = 220,
+            Watermark = watermark,
             HorizontalAlignment = HorizontalAlignment.Stretch
         };
 
-        parent.Children.Add(BuildLabeledEditorRow(label, editor));
+        parent.Children.Add(editor);
         return editor;
     }
 
-    private static Control BuildLabeledEditorRow(string label, Control editor)
+    private static MultiLineTextEditor AddMultiLineTextEditor(Panel parent, string title, string? value)
     {
-        var row = new StackPanel
+        var editor = new MultiLineTextEditor
         {
-            Orientation = Orientation.Horizontal,
-            Spacing = 12
+            Title = title,
+            Text = value,
+            MinHeight = 120,
+            HorizontalAlignment = HorizontalAlignment.Stretch
         };
 
-        row.Children.Add(new TextBlock
-        {
-            Text = label,
-            Width = 160,
-            VerticalAlignment = VerticalAlignment.Center
-        });
-        row.Children.Add(editor);
-        return row;
+        parent.Children.Add(editor);
+        return editor;
     }
 
-    private static double ParseOrDefault(TextBox box, double fallback)
+    private static DoubleEditor AddNumberEditor(Panel parent, string title, double value, double? minimum = null, string? unit = null)
     {
-        if (double.TryParse(box.Text, NumberStyles.Float | NumberStyles.AllowThousands, CultureInfo.InvariantCulture, out var parsed))
-            return parsed;
+        var editor = new DoubleEditor
+        {
+            Title = title,
+            Value = value,
+            Digits = 3,
+            Minimum = minimum,
+            Unit = unit,
+            HorizontalAlignment = HorizontalAlignment.Stretch
+        };
 
-        return fallback;
+        parent.Children.Add(editor);
+        return editor;
     }
+
+    private static double GetEditorValueOr(DoubleEditor editor, double fallback)
+        => editor.Value ?? fallback;
 
     private static IBrush TryParseBrushFromText(string? text, IBrush fallback)
     {

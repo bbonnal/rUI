@@ -19,10 +19,22 @@ public class RibbonControl : TemplatedControl
             nameof(SelectedTab),
             defaultBindingMode: BindingMode.TwoWay);
 
+    public static readonly StyledProperty<int> SelectedIndexProperty =
+        AvaloniaProperty.Register<RibbonControl, int>(
+            nameof(SelectedIndex),
+            defaultValue: -1,
+            defaultBindingMode: BindingMode.TwoWay);
+
     public RibbonTab? SelectedTab
     {
         get => GetValue(SelectedTabProperty);
         set => SetValue(SelectedTabProperty, value);
+    }
+
+    public int SelectedIndex
+    {
+        get => GetValue(SelectedIndexProperty);
+        set => SetValue(SelectedIndexProperty, value);
     }
 
     protected override void OnApplyTemplate(TemplateAppliedEventArgs e)
@@ -35,7 +47,10 @@ public class RibbonControl : TemplatedControl
         _tabStrip = e.NameScope.Find<ListBox>("PART_TabStrip");
 
         if (_tabStrip is not null)
+        {
             _tabStrip.SelectionChanged += OnTabStripSelectionChanged;
+            _tabStrip.SelectedItem = SelectedTab;
+        }
 
         if (SelectedTab is null && Tabs.Count > 0)
             SelectedTab = Tabs[0];
@@ -45,11 +60,24 @@ public class RibbonControl : TemplatedControl
     {
         base.OnPropertyChanged(change);
 
-        if (change.Property == SelectedTabProperty && _tabStrip is not null)
+        if (change.Property == SelectedTabProperty)
         {
             var tab = change.GetNewValue<RibbonTab?>();
-            if (_tabStrip.SelectedItem != tab)
+
+            var newIndex = tab is null ? -1 : Tabs.IndexOf(tab);
+            if (newIndex != SelectedIndex)
+                SelectedIndex = newIndex;
+
+            if (_tabStrip is not null && _tabStrip.SelectedItem != tab)
                 _tabStrip.SelectedItem = tab;
+        }
+        else if (change.Property == SelectedIndexProperty)
+        {
+            var index = change.GetNewValue<int>();
+            var tab = index >= 0 && index < Tabs.Count ? Tabs[index] : null;
+
+            if (SelectedTab != tab)
+                SelectedTab = tab;
         }
     }
 

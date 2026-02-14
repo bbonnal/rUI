@@ -52,6 +52,7 @@ public class ContentDialogService : IContentDialogService
         dialog.IsPrimaryButtonEnabled = true;
         dialog.IsSecondaryButtonEnabled = true;
         dialog.IsCloseButtonEnabled = true;
+        dialog.IsLightDismissEnabled = true;
         dialog.DefaultButton = DefaultButton.None;
     }
 }
