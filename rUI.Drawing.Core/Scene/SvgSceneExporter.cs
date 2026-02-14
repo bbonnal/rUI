@@ -57,7 +57,7 @@ public sealed class SvgSceneExporter : ISvgSceneExporter
             {
                 var len = s.Length ?? 0;
                 var (dx, dy) = OrientationUnit(s);
-                sb.AppendLine($"  <line x1=\"{Fmt(s.PositionX)}\" y1=\"{Fmt(s.PositionY)}\" x2=\"{Fmt(s.PositionX + (dx * len))}\" y2=\"{Fmt(s.PositionY + (dy * len))}\" stroke=\"#00b7ff\" stroke-width=\"1\" />");
+                sb.AppendLine($"  <line x1=\"{Fmt(s.PositionX)}\" y1=\"{Fmt(s.PositionY)}\" x2=\"{Fmt(s.PositionX + (dx * len))}\" y2=\"{Fmt(s.PositionY + (dy * len))}\" stroke=\"#00b7ff\" stroke-width=\"{Fmt(StrokeWidth(s))}\" />");
                 break;
             }
             case "Rectangle":
@@ -70,16 +70,16 @@ public sealed class SvgSceneExporter : ISvgSceneExporter
                 if (s.Kind == "Image" && !string.IsNullOrWhiteSpace(s.SourcePath))
                 {
                     sb.AppendLine($"  <image href=\"{Escape(s.SourcePath)}\" x=\"{Fmt(x)}\" y=\"{Fmt(y)}\" width=\"{Fmt(w)}\" height=\"{Fmt(h)}\" preserveAspectRatio=\"none\" />");
-                    sb.AppendLine($"  <rect x=\"{Fmt(x)}\" y=\"{Fmt(y)}\" width=\"{Fmt(w)}\" height=\"{Fmt(h)}\" fill=\"none\" stroke=\"#00b7ff\" stroke-width=\"1\" />");
+                    sb.AppendLine($"  <rect x=\"{Fmt(x)}\" y=\"{Fmt(y)}\" width=\"{Fmt(w)}\" height=\"{Fmt(h)}\" fill=\"{FillValue(s)}\" stroke=\"#00b7ff\" stroke-width=\"{Fmt(StrokeWidth(s))}\" />");
                 }
                 else
                 {
-                    sb.AppendLine($"  <rect x=\"{Fmt(x)}\" y=\"{Fmt(y)}\" width=\"{Fmt(w)}\" height=\"{Fmt(h)}\" fill=\"none\" stroke=\"#00b7ff\" stroke-width=\"1\" />");
+                    sb.AppendLine($"  <rect x=\"{Fmt(x)}\" y=\"{Fmt(y)}\" width=\"{Fmt(w)}\" height=\"{Fmt(h)}\" fill=\"{FillValue(s)}\" stroke=\"#00b7ff\" stroke-width=\"{Fmt(StrokeWidth(s))}\" />");
                 }
                 break;
             }
             case "Circle":
-                sb.AppendLine($"  <circle cx=\"{Fmt(s.PositionX)}\" cy=\"{Fmt(s.PositionY)}\" r=\"{Fmt(s.Radius ?? 0)}\" fill=\"none\" stroke=\"#00b7ff\" stroke-width=\"1\" />");
+                sb.AppendLine($"  <circle cx=\"{Fmt(s.PositionX)}\" cy=\"{Fmt(s.PositionY)}\" r=\"{Fmt(s.Radius ?? 0)}\" fill=\"{FillValue(s)}\" stroke=\"#00b7ff\" stroke-width=\"{Fmt(StrokeWidth(s))}\" />");
                 break;
             case "Text":
                 sb.AppendLine($"  <text x=\"{Fmt(s.PositionX)}\" y=\"{Fmt(s.PositionY)}\" font-size=\"{Fmt(s.FontSize ?? 20)}\" fill=\"#00b7ff\">{EscapeText(s.Text ?? string.Empty)}</text>");
@@ -104,13 +104,13 @@ public sealed class SvgSceneExporter : ISvgSceneExporter
             case "Arc":
             {
                 var path = BuildArcPath(s.PositionX, s.PositionY, s.Radius ?? 0, s.StartAngleRad ?? 0, s.SweepAngleRad ?? 0, s.OrientationX, s.OrientationY);
-                sb.AppendLine($"  <path d=\"{path}\" fill=\"none\" stroke=\"#00b7ff\" stroke-width=\"1\" />");
+                sb.AppendLine($"  <path d=\"{path}\" fill=\"none\" stroke=\"#00b7ff\" stroke-width=\"{Fmt(StrokeWidth(s))}\" />");
                 break;
             }
             case "AngleDimension":
             {
                 var path = BuildArcPath(s.PositionX, s.PositionY, s.Radius ?? 0, s.StartAngleRad ?? 0, s.SweepAngleRad ?? 0, s.OrientationX, s.OrientationY);
-                sb.AppendLine($"  <path d=\"{path}\" fill=\"none\" stroke=\"#00b7ff\" stroke-width=\"1\" />");
+                sb.AppendLine($"  <path d=\"{path}\" fill=\"none\" stroke=\"#00b7ff\" stroke-width=\"{Fmt(StrokeWidth(s))}\" />");
                 break;
             }
             case "Arrow":
@@ -161,6 +161,12 @@ public sealed class SvgSceneExporter : ISvgSceneExporter
 
     private static string Fmt(double value)
         => value.ToString("0.###", CultureInfo.InvariantCulture);
+
+    private static double StrokeWidth(SceneShapeDto shape)
+        => Math.Max(0.1, shape.LineWeight ?? 1);
+
+    private static string FillValue(SceneShapeDto shape)
+        => shape.Fill == true ? "#00b7ff" : "none";
 
     private static string Escape(string value)
         => value.Replace("&", "&amp;", StringComparison.Ordinal)

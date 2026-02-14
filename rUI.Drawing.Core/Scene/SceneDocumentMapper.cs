@@ -211,6 +211,15 @@ public static class SceneDocumentMapper
         if (shape is not null && !string.IsNullOrWhiteSpace(dto.Id))
             shape.Id = dto.Id;
 
+        if (shape is not null)
+        {
+            if (dto.LineWeight is not null)
+                shape.LineWeight = Math.Max(dto.LineWeight.Value, 0);
+
+            if (dto.Fill is not null)
+                shape.Fill = dto.Fill.Value;
+        }
+
         return shape;
     }
 
@@ -223,6 +232,8 @@ public static class SceneDocumentMapper
             PositionX = shape.Pose.Position.X,
             PositionY = shape.Pose.Position.Y,
             OrientationX = shape.Pose.Orientation.X,
-            OrientationY = shape.Pose.Orientation.Y
+            OrientationY = shape.Pose.Orientation.Y,
+            LineWeight = shape.LineWeight,
+            Fill = shape.Fill
         };
 }

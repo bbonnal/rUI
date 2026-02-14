@@ -57,6 +57,10 @@ public sealed record class SceneShapeDto
 
     public double? SweepAngleRad { get; init; }
 
+    public double? LineWeight { get; init; }
+
+    public bool? Fill { get; init; }
+
     public string? Text { get; init; }
 
     public string? SourcePath { get; init; }

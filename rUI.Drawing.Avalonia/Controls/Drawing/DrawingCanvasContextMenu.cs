@@ -35,7 +35,7 @@ public sealed class DrawingCanvasContextMenu : ContextMenu
 
     public void ConfigureForShape()
     {
-        _canvasSettingsItem.IsVisible = true;
+        _canvasSettingsItem.IsVisible = false;
         _propertiesItem.IsVisible = true;
         _deleteShapeItem.IsVisible = true;
         _centerViewItem.IsVisible = false;
@@ -43,7 +43,7 @@ public sealed class DrawingCanvasContextMenu : ContextMenu
 
     public void ConfigureForComputedShape()
     {
-        _canvasSettingsItem.IsVisible = true;
+        _canvasSettingsItem.IsVisible = false;
         _propertiesItem.IsVisible = false;
         _deleteShapeItem.IsVisible = false;
         _centerViewItem.IsVisible = false;

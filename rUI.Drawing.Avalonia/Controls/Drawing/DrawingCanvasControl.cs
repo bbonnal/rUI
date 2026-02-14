@@ -404,23 +404,28 @@ public class DrawingCanvasControl : Control
                 context,
                 shape,
                 isComputed ? ComputedStroke : ShapeStroke,
-                StrokeThickness,
+                GetShapeStrokeThickness(shape),
                 isComputed ? [5, 4] : null);
         }
 
         if (_hoveredShape is not null && !ReferenceEquals(_hoveredShape, _selectedShape))
-            DrawShape(context, _hoveredShape, HoverStroke, StrokeThickness + 1.25, null);
+            DrawShape(context, _hoveredShape, HoverStroke, GetShapeStrokeThickness(_hoveredShape) + 1.25, null);
 
         if (_selectedShape is not null)
         {
             var selectedComputed = IsComputedShape(_selectedShape);
-            DrawShape(context, _selectedShape, selectedComputed ? ComputedStroke : SelectedStroke, StrokeThickness + 1.5, selectedComputed ? [5, 4] : null);
+            DrawShape(
+                context,
+                _selectedShape,
+                selectedComputed ? ComputedStroke : SelectedStroke,
+                GetShapeStrokeThickness(_selectedShape) + 1.5,
+                selectedComputed ? [5, 4] : null);
             if (!selectedComputed)
                 DrawGrabHandles(context, _selectedShape);
         }
 
         if (_previewShape is not null)
-            DrawShape(context, _previewShape, PreviewStroke, StrokeThickness, [6, 4]);
+            DrawShape(context, _previewShape, PreviewStroke, GetShapeStrokeThickness(_previewShape), [6, 4]);
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
@@ -691,6 +696,17 @@ public class DrawingCanvasControl : Control
             return;
         }
 
+        if (ReferenceEquals(hitShape, _selectedShape) && !IsComputedShape(hitShape) && e.ClickCount >= 2)
+        {
+            _ = ShowShapePropertiesDialogAsync(hitShape);
+            _activeHandle = ShapeHandleKind.None;
+            _lastDragWorld = null;
+            UpdateCursor();
+            InvalidateVisual();
+            e.Handled = true;
+            return;
+        }
+
         if (!ReferenceEquals(hitShape, _selectedShape))
         {
             _selectedShape = hitShape;
@@ -932,6 +948,8 @@ public class DrawingCanvasControl : Control
         var yEditor = AddNumberEditor(container, "Position Y", shape.Pose.Position.Y);
         var oxEditor = AddNumberEditor(container, "Orientation X", shape.Pose.Orientation.X);
         var oyEditor = AddNumberEditor(container, "Orientation Y", shape.Pose.Orientation.Y);
+        var lineWeightEditor = AddNumberEditor(container, "Line weight", shape.LineWeight, 0);
+        var fillEditor = AddCheckBox(container, "Fill", shape.Fill);
 
         Action specificApply = () => { };
 
@@ -1111,6 +1129,8 @@ public class DrawingCanvasControl : Control
                 orientation = shape.Pose.Orientation;
 
             shape.Pose = CreatePose(x, y, orientation);
+            shape.LineWeight = Math.Max(GetEditorValueOr(lineWeightEditor, shape.LineWeight), 0);
+            shape.Fill = fillEditor.IsChecked == true;
             specificApply();
         };
 
@@ -1159,6 +1179,18 @@ public class DrawingCanvasControl : Control
             Minimum = minimum,
             Unit = unit,
             HorizontalAlignment = HorizontalAlignment.Stretch
+        };
+
+        parent.Children.Add(editor);
+        return editor;
+    }
+
+    private static CheckBox AddCheckBox(Panel parent, string title, bool value)
+    {
+        var editor = new CheckBox
+        {
+            Content = title,
+            IsChecked = value
         };
 
         parent.Children.Add(editor);
@@ -1288,6 +1320,7 @@ public class DrawingCanvasControl : Control
 
     private void DrawShape(DrawingContext context, Shape shape, IBrush strokeBrush, double thickness, IReadOnlyList<double>? dashArray)
     {
+        var fillBrush = shape.Fill ? strokeBrush : null;
         var pen = dashArray is null
             ? new Pen(strokeBrush, thickness)
             : new Pen(strokeBrush, thickness, dashStyle: new DashStyle(dashArray, 0));
@@ -1297,7 +1330,7 @@ public class DrawingCanvasControl : Control
             case FlowPoint point:
             {
                 var p = WorldToScreen(point.Pose.Position);
-                context.DrawEllipse(strokeBrush, null, p, PointDisplayRadius, PointDisplayRadius);
+                context.DrawEllipse(strokeBrush, pen, p, PointDisplayRadius, PointDisplayRadius);
                 break;
             }
             case Line line:
@@ -1308,7 +1341,7 @@ public class DrawingCanvasControl : Control
                 break;
             }
             case FlowRectangle rectangle:
-                DrawClosedPolyline(context, pen,
+                DrawClosedPolygon(context, pen, fillBrush,
                     rectangle.TopLeft.Position,
                     rectangle.TopRight.Position,
                     rectangle.BottomRight.Position,
@@ -1319,7 +1352,7 @@ public class DrawingCanvasControl : Control
             {
                 var center = WorldToScreen(circle.Pose.Position);
                 var radius = circle.Radius * Zoom;
-                context.DrawEllipse(null, pen, center, radius, radius);
+                context.DrawEllipse(fillBrush, pen, center, radius, radius);
                 break;
             }
             case ImageShape image:
@@ -1332,7 +1365,7 @@ public class DrawingCanvasControl : Control
                 DrawArrowShape(context, arrow, pen);
                 break;
             case CenterlineRectangleShape centerlineRectangle:
-                DrawClosedPolyline(context, pen,
+                DrawClosedPolygon(context, pen, fillBrush,
                     centerlineRectangle.TopLeft,
                     centerlineRectangle.TopRight,
                     centerlineRectangle.BottomRight,
@@ -1365,7 +1398,8 @@ public class DrawingCanvasControl : Control
 
     private void DrawImageShape(DrawingContext context, ImageShape image, Pen pen)
     {
-        DrawClosedPolyline(context, pen, image.TopLeft, image.TopRight, image.BottomRight, image.BottomLeft, image.TopLeft);
+        var fillBrush = image.Fill ? pen.Brush : null;
+        DrawClosedPolygon(context, pen, fillBrush, image.TopLeft, image.TopRight, image.BottomRight, image.BottomLeft, image.TopLeft);
 
         var bitmap = TryGetBitmap(image.SourcePath);
         if (bitmap is null)
@@ -1384,7 +1418,8 @@ public class DrawingCanvasControl : Control
 
     private void DrawTextBoxShape(DrawingContext context, TextBoxShape textBox, Pen pen, IBrush strokeBrush)
     {
-        DrawClosedPolyline(context, pen, textBox.TopLeft, textBox.TopRight, textBox.BottomRight, textBox.BottomLeft, textBox.TopLeft);
+        var fillBrush = textBox.Fill ? pen.Brush : null;
+        DrawClosedPolygon(context, pen, fillBrush, textBox.TopLeft, textBox.TopRight, textBox.BottomRight, textBox.BottomLeft, textBox.TopLeft);
 
         var topLeft = WorldToScreen(textBox.TopLeft);
         var bottomRight = WorldToScreen(textBox.BottomRight);
@@ -1543,10 +1578,30 @@ public class DrawingCanvasControl : Control
         }
     }
 
-    private void DrawClosedPolyline(DrawingContext context, Pen pen, params FlowVector[] points)
+    private void DrawClosedPolygon(DrawingContext context, Pen pen, IBrush? fill, params FlowVector[] points)
     {
+        if (fill is not null && points.Length >= 3)
+        {
+            var geometry = new StreamGeometry();
+            using (var gctx = geometry.Open())
+            {
+                gctx.BeginFigure(WorldToScreen(points[0]), true);
+                for (var i = 1; i < points.Length; i++)
+                    gctx.LineTo(WorldToScreen(points[i]));
+                gctx.EndFigure(true);
+            }
+
+            context.DrawGeometry(fill, null, geometry);
+        }
+
         for (var i = 1; i < points.Length; i++)
             context.DrawLine(pen, WorldToScreen(points[i - 1]), WorldToScreen(points[i]));
+    }
+
+    private double GetShapeStrokeThickness(Shape shape)
+    {
+        var lineWeight = shape.LineWeight;
+        return lineWeight > 0 ? lineWeight : StrokeThickness;
     }
 
     private void DrawArrowHead(DrawingContext context, Pen pen, FlowVector tip, FlowVector tailAnchor, double pixelSize)

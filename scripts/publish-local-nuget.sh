@@ -1,91 +1,73 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+RUI_CSPROJ="${ROOT_DIR}/rUI/rUI.csproj"
+FEED_PATH="${HOME}/.nuget/local-feed"
+PACKAGE_OUT="${ROOT_DIR}/artifacts/packages"
+BUMP_KIND="patch"
+EXPLICIT_VERSION=""
+CONFIGURATION="Release"
+PROJECTS=(
+  "${ROOT_DIR}/rUI.AppModel/rUI.AppModel.csproj"
+  "${ROOT_DIR}/rUI.AppModel.Json/rUI.AppModel.Json.csproj"
+  "${ROOT_DIR}/rUI.Drawing.Core/rUI.Drawing.Core.csproj"
+  "${ROOT_DIR}/rUI.Avalonia.Desktop/rUI.Avalonia.Desktop.csproj"
+  "${ROOT_DIR}/rUI.Drawing.Avalonia/rUI.Drawing.Avalonia.csproj"
+  "${ROOT_DIR}/rUI/rUI.csproj"
+)
+
 usage() {
-  cat <<'EOF'
-Usage: scripts/publish-local-nuget.sh [options]
+  cat <<EOF
+Usage: $(basename "$0") [--bump patch|minor|major] [--version X.Y.Z[-suffix]] [--feed PATH] [--configuration Release|Debug]
 
-Packs rUI libraries and publishes them to a local NuGet feed.
-
-Options:
-  --version <semver>       Package version to use for all packages.
-  --configuration <cfg>    Build configuration (default: Release).
-  --feed <path>            Local feed path (default: ~/.nuget/local-feed).
-  -h, --help               Show this help.
+Builds packable rUI projects, bumps package version, and publishes packages to local NuGet feed.
 EOF
 }
 
-VERSION=""
-CONFIGURATION="Release"
-FEED_DIR="$HOME/.nuget/local-feed"
-
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --version)
-      VERSION="${2:-}"
-      shift 2
-      ;;
-    --configuration)
-      CONFIGURATION="${2:-}"
-      shift 2
-      ;;
-    --feed)
-      FEED_DIR="${2:-}"
-      shift 2
-      ;;
-    -h|--help)
-      usage
-      exit 0
-      ;;
-    *)
-      echo "Unknown argument: $1" >&2
-      usage >&2
-      exit 1
-      ;;
+    --bump) BUMP_KIND="${2:-}"; shift 2 ;;
+    --version) EXPLICIT_VERSION="${2:-}"; shift 2 ;;
+    --feed) FEED_PATH="${2:-}"; shift 2 ;;
+    --configuration) CONFIGURATION="${2:-}"; shift 2 ;;
+    -h|--help) usage; exit 0 ;;
+    *) echo "Unknown argument: $1" >&2; usage; exit 1 ;;
   esac
 done
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-PACKAGE_OUTPUT_DIR="$REPO_ROOT/artifacts/nuget/$CONFIGURATION"
-
-PROJECTS=(
-  "$REPO_ROOT/rUI.Drawing.Core/rUI.Drawing.Core.csproj"
-  "$REPO_ROOT/rUI.Avalonia.Desktop/rUI.Avalonia.Desktop.csproj"
-  "$REPO_ROOT/rUI.Drawing.Avalonia/rUI.Drawing.Avalonia.csproj"
-  "$REPO_ROOT/rUI/rUI.csproj"
-)
-
-mkdir -p "$FEED_DIR"
-mkdir -p "$PACKAGE_OUTPUT_DIR"
-
-echo "Packing projects to: $PACKAGE_OUTPUT_DIR"
-for project in "${PROJECTS[@]}"; do
-  echo " - $(basename "$project")"
-  PACK_ARGS=(
-    dotnet pack "$project"
-    --configuration "$CONFIGURATION"
-    --output "$PACKAGE_OUTPUT_DIR"
-  )
-
-  if [[ -n "$VERSION" ]]; then
-    PACK_ARGS+=( -p:PackageVersion="$VERSION" )
+if [[ -n "$EXPLICIT_VERSION" ]]; then
+  TARGET_VERSION="$EXPLICIT_VERSION"
+else
+  CURRENT_VERSION="$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' "$RUI_CSPROJ" | head -n 1)"
+  if [[ ! "$CURRENT_VERSION" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)(-.+)?$ ]]; then
+    echo "Current version '${CURRENT_VERSION}' is not semver-like." >&2; exit 1
   fi
 
-  "${PACK_ARGS[@]}"
-done
-
-mapfile -t PACKAGES < <(find "$PACKAGE_OUTPUT_DIR" -maxdepth 1 -type f -name '*.nupkg' ! -name '*.snupkg' | sort)
-
-if [[ ${#PACKAGES[@]} -eq 0 ]]; then
-  echo "No .nupkg files were produced." >&2
-  exit 1
+  MAJOR="${BASH_REMATCH[1]}"; MINOR="${BASH_REMATCH[2]}"; PATCH="${BASH_REMATCH[3]}"
+  case "$BUMP_KIND" in
+    patch) PATCH=$((PATCH + 1)) ;;
+    minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
+    major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
+  esac
+  TARGET_VERSION="${MAJOR}.${MINOR}.${PATCH}"
 fi
 
-echo "Publishing packages to local feed: $FEED_DIR"
-for package in "${PACKAGES[@]}"; do
-  echo " - $(basename "$package")"
-  dotnet nuget push "$package" --source "$FEED_DIR" --skip-duplicate
+# Update the version in the meta-project file
+sed -i "s|<Version>.*</Version>|<Version>${TARGET_VERSION}</Version>|" "$RUI_CSPROJ"
+
+echo "Publishing rUI packages (v${TARGET_VERSION}) to ${FEED_PATH}"
+mkdir -p "${FEED_PATH}" "${PACKAGE_OUT}"
+rm -f "${PACKAGE_OUT}"/rUI*.nupkg "${PACKAGE_OUT}"/rUI*.snupkg
+
+for project in "${PROJECTS[@]}"; do
+  dotnet pack "${project}" -c "${CONFIGURATION}" -p:Version="${TARGET_VERSION}" -p:PackageOutputPath="${PACKAGE_OUT}"
 done
 
-echo "Done."
+shopt -s nullglob
+PACKAGES=( "${PACKAGE_OUT}"/rUI*.nupkg "${PACKAGE_OUT}"/rUI*.snupkg )
+rm -f "${FEED_PATH}"/rUI*.nupkg "${FEED_PATH}"/rUI*.snupkg
+cp -f "${PACKAGES[@]}" "${FEED_PATH}/"
+
+echo -e "\nPublished in ${FEED_PATH}:"
+ls -1 "${FEED_PATH}"/rUI*.nupkg

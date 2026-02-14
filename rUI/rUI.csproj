@@ -9,6 +9,8 @@
     <IncludeBuildOutput>false</IncludeBuildOutput>
     <NoWarn>$(NoWarn);NU5128</NoWarn>
 
+    <Version>0.1.1</Version>
+
     <PackageId>rUI</PackageId>
     <Title>rUI Meta Package</Title>
     <Description>Meta package for the rUI framework. Installs the core rUI control packages.</Description>

@@ -210,23 +210,35 @@ public static class ShapeInteractionEngine
             case Line line:
                 return DistanceToSegment(world, line.StartPoint.Position, line.EndPoint.Position) <= tolerance;
             case FlowRectangle rectangle:
-                return IsRectanglePerimeterHit(rectangle.TopLeft.Position, rectangle.TopRight.Position, rectangle.BottomRight.Position, rectangle.BottomLeft.Position, world, tolerance);
+                return IsRectanglePerimeterHit(rectangle.TopLeft.Position, rectangle.TopRight.Position, rectangle.BottomRight.Position, rectangle.BottomLeft.Position, world, tolerance) ||
+                       (rectangle.Fill && IsInsideConvexQuad(rectangle.TopLeft.Position, rectangle.TopRight.Position, rectangle.BottomRight.Position, rectangle.BottomLeft.Position, world));
             case Circle circle:
-                return Math.Abs(Distance(circle.Pose.Position, world) - circle.Radius) <= tolerance;
+            {
+                var radialDistance = Distance(circle.Pose.Position, world);
+                return Math.Abs(radialDistance - circle.Radius) <= tolerance || (circle.Fill && radialDistance <= circle.Radius);
+            }
             case ImageShape image:
-                return IsRectanglePerimeterHit(image.TopLeft, image.TopRight, image.BottomRight, image.BottomLeft, world, tolerance);
+                return IsRectanglePerimeterHit(image.TopLeft, image.TopRight, image.BottomRight, image.BottomLeft, world, tolerance) ||
+                       (image.Fill && IsInsideConvexQuad(image.TopLeft, image.TopRight, image.BottomRight, image.BottomLeft, world));
             case TextBoxShape textBox:
-                return IsRectanglePerimeterHit(textBox.TopLeft, textBox.TopRight, textBox.BottomRight, textBox.BottomLeft, world, tolerance);
+                return IsRectanglePerimeterHit(textBox.TopLeft, textBox.TopRight, textBox.BottomRight, textBox.BottomLeft, world, tolerance) ||
+                       (textBox.Fill && IsInsideConvexQuad(textBox.TopLeft, textBox.TopRight, textBox.BottomRight, textBox.BottomLeft, world));
             case ArrowShape arrow:
                 return IsArrowHit(arrow, world, tolerance);
             case CenterlineRectangleShape centerlineRectangle:
                 return IsRectanglePerimeterHit(
-                    centerlineRectangle.TopLeft,
-                    centerlineRectangle.TopRight,
-                    centerlineRectangle.BottomRight,
-                    centerlineRectangle.BottomLeft,
-                    world,
-                    tolerance);
+                           centerlineRectangle.TopLeft,
+                           centerlineRectangle.TopRight,
+                           centerlineRectangle.BottomRight,
+                           centerlineRectangle.BottomLeft,
+                           world,
+                           tolerance) ||
+                       (centerlineRectangle.Fill && IsInsideConvexQuad(
+                           centerlineRectangle.TopLeft,
+                           centerlineRectangle.TopRight,
+                           centerlineRectangle.BottomRight,
+                           centerlineRectangle.BottomLeft,
+                           world));
             case ReferentialShape referential:
                 return DistanceToSegment(world, referential.Origin, referential.XAxisEnd) <= tolerance ||
                        DistanceToSegment(world, referential.Origin, referential.YAxisEnd) <= tolerance;
@@ -806,6 +818,18 @@ public static class ShapeInteractionEngine
                DistanceToSegment(point, bottomLeft, topLeft) <= tolerance;
     }
 
+    private static bool IsInsideConvexQuad(Vector topLeft, Vector topRight, Vector bottomRight, Vector bottomLeft, Vector point)
+    {
+        var d1 = Cross(topRight - topLeft, point - topLeft);
+        var d2 = Cross(bottomRight - topRight, point - topRight);
+        var d3 = Cross(bottomLeft - bottomRight, point - bottomRight);
+        var d4 = Cross(topLeft - bottomLeft, point - bottomLeft);
+
+        var hasNegative = d1 < 0 || d2 < 0 || d3 < 0 || d4 < 0;
+        var hasPositive = d1 > 0 || d2 > 0 || d3 > 0 || d4 > 0;
+        return !(hasNegative && hasPositive);
+    }
+
     private static bool IsArrowHit(ArrowShape arrow, Vector point, double tolerance)
     {
         return DistanceToSegment(point, arrow.StartPoint, arrow.EndPoint) <= tolerance ||
@@ -899,6 +923,9 @@ public static class ShapeInteractionEngine
 
     private static double Dot(Vector a, Vector b)
         => (a.X * b.X) + (a.Y * b.Y);
+
+    private static double Cross(Vector a, Vector b)
+        => (a.X * b.Y) - (a.Y * b.X);
 
     private static double Distance(Vector a, Vector b)
     {
